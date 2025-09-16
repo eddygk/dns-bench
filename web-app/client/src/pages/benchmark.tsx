@@ -28,6 +28,7 @@ export function BenchmarkPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const testType = searchParams.get('type') || 'quick'
+  const autostart = searchParams.get('autostart') === 'true'
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [currentTest, setCurrentTest] = useState<string>('')
@@ -35,6 +36,7 @@ export function BenchmarkPage() {
   const [realTimeResults, setRealTimeResults] = useState<RealTimeResult[]>([])
   const [activityLog, setActivityLog] = useState<Array<{domain: string, server: string, time: number | null, status: 'success' | 'timeout'}>>([])
   const [socket, setSocket] = useState<Socket | null>(null)
+  const [hasAutostarted, setHasAutostarted] = useState(false)
 
   // Connect to Socket.IO for real-time updates
   useEffect(() => {
@@ -132,6 +134,14 @@ export function BenchmarkPage() {
     }
   }, [testId, isRunning, navigate])
 
+  // Auto-start benchmark if requested
+  useEffect(() => {
+    if (autostart && !hasAutostarted && !isRunning) {
+      setHasAutostarted(true)
+      handleStartBenchmark()
+    }
+  }, [autostart, hasAutostarted, isRunning])
+
   const handleStartBenchmark = async () => {
     try {
       setIsRunning(true)
@@ -148,7 +158,7 @@ export function BenchmarkPage() {
       let serversToTest: string[] = []
       if (testType === 'quick') {
         serversToTest = [
-          ...currentServers.slice(0, 3), // Include all local DNS servers
+          ...currentServers, // Include ALL local DNS servers
           '1.1.1.1', // Cloudflare
           '8.8.8.8', // Google
           '9.9.9.9'  // Quad9
@@ -215,7 +225,7 @@ export function BenchmarkPage() {
 
   const getServerName = (ip: string, currentServers: string[]): string => {
     if (currentServers.includes(ip)) {
-      return `Current-${ip}`
+      return ip
     }
     const serverNames: Record<string, string> = {
       '1.1.1.1': 'Cloudflare',
@@ -238,8 +248,8 @@ export function BenchmarkPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">DNS Benchmark</h1>
         <p className="text-muted-foreground">
-          {testType === 'quick' && 'Quick test against top 3 providers + local DNS'}
-          {testType === 'full' && 'Full benchmark against all public DNS providers'}
+          {testType === 'quick' && 'Quick test: Top 3 public DNS (Cloudflare, Google, Quad9) + enabled local DNS'}
+          {testType === 'full' && 'Full benchmark against all enabled DNS servers'}
           {testType === 'custom' && 'Custom benchmark with selected servers'}
         </p>
       </div>

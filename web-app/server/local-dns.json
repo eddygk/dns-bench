@@ -11,6 +11,22 @@
     {
       "ip": "10.10.20.10",
       "enabled": true
+    },
+    {
+      "ip": "10.10.20.6",
+      "enabled": true
+    },
+    {
+      "ip": "10.10.20.7",
+      "enabled": true
+    },
+    {
+      "ip": "10.10.20.8",
+      "enabled": true
+    },
+    {
+      "ip": "172.16.15.1",
+      "enabled": true
     }
   ]
 }

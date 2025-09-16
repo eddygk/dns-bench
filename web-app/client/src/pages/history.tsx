@@ -2,7 +2,18 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { History, Clock, Award, Trash2, Loader2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { History, Clock, Award, Trash2, Loader2, RotateCcw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { apiRequest } from '@/lib/api'
 
@@ -72,6 +83,23 @@ export function HistoryPage() {
     }
   }
 
+  const handleClearAllHistory = async () => {
+    try {
+      const response = await apiRequest('/api/results', {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to clear all history')
+      }
+
+      // Clear local state
+      setHistory([])
+    } catch (err) {
+      alert('Failed to clear history: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    }
+  }
+
   const getTestDuration = (item: HistoryItem) => {
     if (!item.completedAt) return 0
     return Math.round((new Date(item.completedAt).getTime() - new Date(item.startedAt).getTime()) / 1000)
@@ -124,9 +152,38 @@ export function HistoryPage() {
             View and compare your previous DNS benchmark results
           </p>
         </div>
-        <Button onClick={() => navigate('/benchmark')}>
-          Run New Test
-        </Button>
+        <div className="flex items-center space-x-3">
+          {history.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Clear History
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear All History</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete all {history.length} benchmark result{history.length !== 1 ? 's' : ''} from your history.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleClearAllHistory}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Clear All History
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Button onClick={() => navigate('/benchmark')}>
+            Run New Test
+          </Button>
+        </div>
       </div>
 
       {/* History List */}

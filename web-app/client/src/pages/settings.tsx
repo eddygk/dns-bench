@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -25,7 +26,21 @@ interface LocalDNSConfig {
   servers: LocalDNSServer[]
 }
 
+interface PublicDNSServer {
+  id: string
+  name: string
+  ip: string
+  provider: string
+  enabled: boolean
+  isPrimary?: boolean
+}
+
+interface PublicDNSConfig {
+  servers: PublicDNSServer[]
+}
+
 export function SettingsPage() {
+  const queryClient = useQueryClient()
   const [corsSettings, setCorsSettings] = useState<CORSSettings>({
     allowIPAccess: true,
     allowHostnameAccess: true,
@@ -34,47 +49,89 @@ export function SettingsPage() {
   const [localDNSConfig, setLocalDNSConfig] = useState<LocalDNSConfig>({
     servers: [{ ip: '', enabled: true }]
   })
-  const [isLoading, setIsLoading] = useState(false)
+  const [publicDNSConfig, setPublicDNSConfig] = useState<PublicDNSConfig>({
+    servers: []
+  })
+  // isLoading now comes from React Query below
   const [isSaving, setIsSaving] = useState(false)
   const [isDetectingHostname, setIsDetectingHostname] = useState(false)
   const [isSavingDNS, setIsSavingDNS] = useState(false)
+  const [isSavingPublicDNS, setIsSavingPublicDNS] = useState(false)
   const [newOrigin, setNewOrigin] = useState('')
 
-  // Load settings on component mount
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
-  const loadSettings = async () => {
-    setIsLoading(true)
-    try {
-      // Load CORS settings
+  // Load settings using React Query for automatic refetching
+  const { data: settingsData, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
       const response = await apiRequest('/api/settings')
+      return response.json()
+    },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true
+  })
+
+  const { data: serverInfo } = useQuery({
+    queryKey: ['server-info'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/server-info')
+      return response.json()
+    },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true
+  })
+
+  const { data: localDNSData } = useQuery({
+    queryKey: ['settings-local-dns-config'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/settings/local-dns')
       const data = await response.json()
+      return data.config
+    },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true
+  })
 
-      // Also get server info for host IP
-      const serverInfoResponse = await apiRequest('/api/server-info')
-      const serverData = await serverInfoResponse.json()
+  const { data: publicDNSData } = useQuery({
+    queryKey: ['public-dns-config'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/settings/public-dns')
+      const data = await response.json()
+      return data.config
+    },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true
+  })
 
-      if (data.settings?.cors) {
-        setCorsSettings({
-          ...data.settings.cors,
-          detectedHostIP: serverData.detectedHostIP || serverData.hostIP
-        })
-      }
-
-      // Load local DNS configuration
-      const dnsResponse = await apiRequest('/api/settings/local-dns')
-      const dnsData = await dnsResponse.json()
-      if (dnsData.config) {
-        setLocalDNSConfig(dnsData.config)
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error)
-    } finally {
-      setIsLoading(false)
+  // Update state when query data changes (React Query v5 compatible)
+  useEffect(() => {
+    if (settingsData?.settings?.cors) {
+      setCorsSettings(prev => ({
+        ...prev,
+        ...settingsData.settings.cors
+      }))
     }
-  }
+  }, [settingsData])
+
+  useEffect(() => {
+    if (serverInfo) {
+      setCorsSettings(prev => ({
+        ...prev,
+        detectedHostIP: serverInfo.detectedHostIP || serverInfo.hostIP
+      }))
+    }
+  }, [serverInfo])
+
+  useEffect(() => {
+    if (localDNSData) {
+      setLocalDNSConfig(localDNSData)
+    }
+  }, [localDNSData])
+
+  useEffect(() => {
+    if (publicDNSData) {
+      setPublicDNSConfig(publicDNSData)
+    }
+  }, [publicDNSData])
 
   const saveCorsSettings = async () => {
     setIsSaving(true)
@@ -85,8 +142,8 @@ export function SettingsPage() {
       })
 
       if (response.ok) {
-        const data = await response.json()
-        setCorsSettings(data.settings.cors)
+        // Invalidate and refetch the query instead of manually updating state
+        queryClient.invalidateQueries({ queryKey: ['settings'] })
         // Show success message
       } else {
         throw new Error('Failed to save settings')
@@ -144,8 +201,8 @@ export function SettingsPage() {
       })
 
       if (response.ok) {
-        const data = await response.json()
-        setLocalDNSConfig(data.config)
+        // Invalidate and refetch the query instead of manually updating state
+        queryClient.invalidateQueries({ queryKey: ['settings-local-dns-config'] })
       } else {
         throw new Error('Failed to save local DNS settings')
       }
@@ -153,6 +210,27 @@ export function SettingsPage() {
       console.error('Failed to save local DNS settings:', error)
     } finally {
       setIsSavingDNS(false)
+    }
+  }
+
+  const savePublicDNSConfig = async () => {
+    setIsSavingPublicDNS(true)
+    try {
+      const response = await apiRequest('/api/settings/public-dns', {
+        method: 'PUT',
+        body: JSON.stringify(publicDNSConfig),
+      })
+
+      if (response.ok) {
+        // Invalidate and refetch the query instead of manually updating state
+        queryClient.invalidateQueries({ queryKey: ['public-dns-config'] })
+      } else {
+        throw new Error('Failed to save public DNS settings')
+      }
+    } catch (error) {
+      console.error('Failed to save public DNS settings:', error)
+    } finally {
+      setIsSavingPublicDNS(false)
     }
   }
 
@@ -176,6 +254,44 @@ export function SettingsPage() {
     setLocalDNSConfig(prev => ({
       servers: prev.servers.map((server, i) =>
         i === index ? { ...server, [field]: value } : server
+      )
+    }))
+  }
+
+  const addPublicDNSServer = () => {
+    if (publicDNSConfig.servers.length < 20) {
+      const newId = `custom-${Date.now()}`
+      setPublicDNSConfig(prev => ({
+        servers: [...prev.servers, {
+          id: newId,
+          name: '',
+          ip: '',
+          provider: 'Custom',
+          enabled: true,
+          isPrimary: true
+        }]
+      }))
+    }
+  }
+
+  const removePublicDNSServer = (id: string) => {
+    setPublicDNSConfig(prev => ({
+      servers: prev.servers.filter(server => server.id !== id)
+    }))
+  }
+
+  const updatePublicDNSServer = (id: string, field: keyof PublicDNSServer, value: string | boolean) => {
+    setPublicDNSConfig(prev => ({
+      servers: prev.servers.map(server =>
+        server.id === id ? { ...server, [field]: value } : server
+      )
+    }))
+  }
+
+  const togglePublicDNSServer = (id: string) => {
+    setPublicDNSConfig(prev => ({
+      servers: prev.servers.map(server =>
+        server.id === id ? { ...server, enabled: !server.enabled } : server
       )
     }))
   }
@@ -430,6 +546,92 @@ export function SettingsPage() {
           <div className="flex justify-end">
             <Button onClick={saveLocalDNSConfig} disabled={isSavingDNS}>
               {isSavingDNS ? 'Saving...' : 'Save DNS Configuration'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Public DNS Configuration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <Globe className="h-5 w-5" />
+            <CardTitle>Public DNS Servers</CardTitle>
+          </div>
+          <CardDescription>
+            Configure public DNS servers used for benchmarking (maximum 20)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            {publicDNSConfig.servers.map((server) => (
+              <div key={server.id} className="flex items-center space-x-4 p-4 border rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={server.enabled}
+                    onCheckedChange={() => togglePublicDNSServer(server.id)}
+                  />
+                </div>
+                <div className="flex-1 grid grid-cols-3 gap-4">
+                  <Input
+                    placeholder="Provider (e.g., Cloudflare)"
+                    value={server.provider}
+                    onChange={(e) => updatePublicDNSServer(server.id, 'provider', e.target.value)}
+                    disabled={!server.enabled}
+                  />
+                  <Input
+                    placeholder="Server name"
+                    value={server.name}
+                    onChange={(e) => updatePublicDNSServer(server.id, 'name', e.target.value)}
+                    disabled={!server.enabled}
+                  />
+                  <Input
+                    placeholder="e.g., 1.1.1.1"
+                    value={server.ip}
+                    onChange={(e) => updatePublicDNSServer(server.id, 'ip', e.target.value)}
+                    disabled={!server.enabled}
+                    className={server.enabled && server.ip && !/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(server.ip) ? 'border-red-300' : ''}
+                  />
+                </div>
+                {server.id.startsWith('custom-') && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removePublicDNSServer(server.id)}
+                    className="h-8 w-8"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={addPublicDNSServer}
+              disabled={publicDNSConfig.servers.length >= 20}
+              className="flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Custom DNS Server</span>
+            </Button>
+            <Badge variant="secondary">
+              {publicDNSConfig.servers.filter(s => s.enabled).length}/{publicDNSConfig.servers.length} enabled
+            </Badge>
+          </div>
+
+          <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Note:</strong> Only enabled public DNS servers will be included in benchmark tests.
+              All server details (provider, name, IP) are fully customizable. Custom servers can be deleted.
+            </p>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={savePublicDNSConfig} disabled={isSavingPublicDNS}>
+              {isSavingPublicDNS ? 'Saving...' : 'Save Public DNS Configuration'}
             </Button>
           </div>
         </CardContent>

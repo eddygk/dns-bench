@@ -217,17 +217,40 @@ export class DNSBenchmarkService {
     let serversToTest: string[] = []
     
     if (testType === 'quick') {
-      // Top 3 public DNS + current
+      // Quick test: Top 3 public DNS (always) + enabled local DNS servers
       const currentServers = await this.getCurrentDNSServers()
+
+      // For quick test, always use top 3 public DNS regardless of user configuration
+      const quickTestPublicServers = [
+        '1.1.1.1',  // Cloudflare
+        '8.8.8.8',  // Google
+        '9.9.9.9'   // Quad9
+      ]
+
       serversToTest = [
-        ...currentServers.slice(0, 2),
-        '1.1.1.1', // Cloudflare
-        '8.8.8.8', // Google
-        '9.9.9.9'  // Quad9
+        ...currentServers,  // Include only enabled local DNS servers
+        ...quickTestPublicServers
       ]
     } else if (testType === 'full') {
-      // All public DNS servers
-      serversToTest = Object.values(this.publicDNS)
+      // Full test: All enabled local DNS + all enabled public DNS servers
+      const localServers = await this.getCurrentDNSServers()
+      let publicServers: string[] = []
+
+      if (this.settingsService) {
+        try {
+          publicServers = await this.settingsService.getEnabledPublicDNSServers()
+        } catch (error) {
+          this.logger.debug({ error }, 'Failed to get configured public DNS servers, falling back to defaults')
+          publicServers = Object.values(this.publicDNS)
+        }
+      } else {
+        publicServers = Object.values(this.publicDNS)
+      }
+
+      serversToTest = [
+        ...localServers,  // Include enabled local DNS servers
+        ...publicServers  // Include all enabled public DNS servers
+      ]
     } else {
       // Custom servers
       serversToTest = servers
@@ -316,7 +339,7 @@ export class DNSBenchmarkService {
       }
       
       // Calculate final statistics
-      const serverStats = this.calculateServerStats(results)
+      const serverStats = await this.calculateServerStats(results)
 
       status.status = 'completed'
       status.completedAt = new Date()
@@ -658,7 +681,7 @@ export class DNSBenchmarkService {
     }
   }
 
-  private calculateServerStats(results: DNSTestResult[]): BenchmarkResult[] {
+  private async calculateServerStats(results: DNSTestResult[]): Promise<BenchmarkResult[]> {
     const serverResults = new Map<string, DNSTestResult[]>()
     
     // Group results by server
@@ -687,7 +710,7 @@ export class DNSBenchmarkService {
         
         stats.push({
           server,
-          serverName: this.getServerName(server),
+          serverName: await this.getServerName(server),
           avgResponseTime: Math.round(avg * 100) / 100,
           minResponseTime: min,
           maxResponseTime: max,
@@ -700,7 +723,7 @@ export class DNSBenchmarkService {
       } else {
         stats.push({
           server,
-          serverName: this.getServerName(server),
+          serverName: await this.getServerName(server),
           avgResponseTime: -1,
           minResponseTime: -1,
           maxResponseTime: -1,
@@ -724,17 +747,29 @@ export class DNSBenchmarkService {
     return stats
   }
 
-  private getServerName(ip: string): string {
+  private async getServerName(ip: string): Promise<string> {
+    // First check if it's a configured public DNS server
+    if (this.settingsService) {
+      try {
+        const serverMap = await this.settingsService.getPublicDNSServerMap()
+        const name = serverMap.get(ip)
+        if (name) {
+          return name
+        }
+      } catch (error) {
+        this.logger.debug({ error, ip }, 'Failed to get server name from configuration')
+      }
+    }
+
+    // Fallback to hardcoded mapping for backwards compatibility
     for (const [name, serverIP] of Object.entries(this.publicDNS)) {
       if (serverIP === ip) {
         return name
       }
     }
-    // For local/custom DNS servers, use consistent naming with frontend
-    if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) {
-      return `Current-${ip}`
-    }
-    return `Custom-${ip}`
+
+    // For local/custom DNS servers, just use the IP address
+    return ip
   }
 
   getBenchmarkStatus(testId: string): TestStatus | null {

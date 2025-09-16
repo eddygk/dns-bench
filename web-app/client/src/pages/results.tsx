@@ -69,6 +69,9 @@ export function ResultsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedFailures, setExpandedFailures] = useState<Set<string>>(new Set())
+  const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set())
+  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
+  const [isDomainAnalysisExpanded, setIsDomainAnalysisExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
@@ -244,6 +247,26 @@ export function ResultsPage() {
       newExpanded.add(domain)
     }
     setExpandedFailures(newExpanded)
+  }
+
+  const toggleDomainExpansion = (domain: string) => {
+    const newExpanded = new Set(expandedDomains)
+    if (newExpanded.has(domain)) {
+      newExpanded.delete(domain)
+    } else {
+      newExpanded.add(domain)
+    }
+    setExpandedDomains(newExpanded)
+  }
+
+  const toggleServerExpansion = (server: string) => {
+    const newExpanded = new Set(expandedServers)
+    if (newExpanded.has(server)) {
+      newExpanded.delete(server)
+    } else {
+      newExpanded.add(server)
+    }
+    setExpandedServers(newExpanded)
   }
 
   return (
@@ -604,6 +627,134 @@ export function ResultsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Per-Server Domain Analysis */}
+          {domainResults.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Server className="h-5 w-5" />
+                  <span>Per-Server Domain Analysis</span>
+                  <Badge variant="outline">{results.results.length} servers</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Detailed breakdown showing each domain that each DNS server was tested against with results
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Create server groups from domain results */}
+                  {(() => {
+                    const serverGroups = domainResults.reduce<Record<string, DomainResult[]>>((acc, result) => {
+                      if (!acc[result.serverIp]) {
+                        acc[result.serverIp] = []
+                      }
+                      acc[result.serverIp].push(result)
+                      return acc
+                    }, {})
+
+                    return Object.entries(serverGroups).map(([serverIp, serverDomainResults]) => {
+                      const sortedResults = serverDomainResults.sort((a, b) => {
+                        if (a.success !== b.success) return a.success ? -1 : 1
+                        if (a.responseTime && b.responseTime) return a.responseTime - b.responseTime
+                        return 0
+                      })
+
+                      const successRate = (serverDomainResults.filter(r => r.success).length / serverDomainResults.length) * 100
+                      const avgResponseTime = serverDomainResults.filter(r => r.success && r.responseTime)
+                        .reduce((sum, r) => sum + (r.responseTime || 0), 0) /
+                        Math.max(1, serverDomainResults.filter(r => r.success && r.responseTime).length)
+
+                      const failedDomains = serverDomainResults.filter(r => !r.success)
+                      const isServerExpanded = expandedServers.has(serverIp)
+
+                      // Get server name from main results data
+                      const serverInfo = results.results.find(r => r.server === serverIp)
+                      const serverName = serverInfo?.serverName || serverIp
+
+                      return (
+                        <Collapsible key={serverIp}>
+                          <CollapsibleTrigger
+                            className="flex items-center justify-between w-full p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
+                            onClick={() => toggleServerExpansion(serverIp)}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <Server className="h-4 w-4 text-gray-500" />
+                              <div>
+                                <h4 className="font-semibold text-lg text-left">{serverName}</h4>
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                  <span>Success Rate:
+                                    <span className={`font-medium ml-1 ${successRate >= 95 ? 'text-green-600' : successRate > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                      {successRate.toFixed(1)}%
+                                    </span>
+                                  </span>
+                                  {avgResponseTime > 0 && (
+                                    <span>Avg Response: <span className="font-mono">{avgResponseTime.toFixed(1)}ms</span></span>
+                                  )}
+                                  <span>{failedDomains.length} failed</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {failedDomains.length > 0 && (
+                                <Badge variant="destructive" className="text-xs">
+                                  {failedDomains.length} failures
+                                </Badge>
+                              )}
+                              <span className="text-sm text-muted-foreground">
+                                {isServerExpanded ? 'Hide' : 'Show'} details
+                              </span>
+                              {isServerExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-2">
+                            <div className="ml-7 overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b">
+                                    <th className="text-left p-2">Domain</th>
+                                    <th className="text-left p-2">Status</th>
+                                    <th className="text-left p-2">Response Time</th>
+                                    <th className="text-left p-2">Response Code</th>
+                                    <th className="text-left p-2">IP Result</th>
+                                    <th className="text-left p-2">Error</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {sortedResults.map((result, idx) => (
+                                    <tr key={`${result.domain}-${idx}`} className="border-b">
+                                      <td className="p-2 font-medium">{result.domain}</td>
+                                      <td className="p-2">
+                                        <Badge variant={result.success ? "default" : "destructive"} className="text-xs">
+                                          {result.success ? 'Success' : 'Failed'}
+                                        </Badge>
+                                      </td>
+                                      <td className="p-2 font-mono text-xs">
+                                        {result.responseTime ? `${result.responseTime}ms` : '--'}
+                                      </td>
+                                      <td className="p-2 font-mono text-xs">
+                                        {result.responseCode || '--'}
+                                      </td>
+                                      <td className="p-2 font-mono text-xs">
+                                        {result.ipResult || '--'}
+                                      </td>
+                                      <td className="p-2 text-xs">
+                                        {result.errorMessage || result.errorType || '--'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )
+                    })
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="diagnostics" className="space-y-6">
@@ -668,114 +819,148 @@ export function ResultsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Legacy Per-Domain Breakdown - Now condensed since we have detailed failure tabs */}
+      {/* Per-Domain Analysis - Collapsible */}
       {domainResults.length > 0 && activeTab === 'overview' && (
         <Card>
           <CardHeader>
-            <CardTitle>Per-Domain Analysis</CardTitle>
-            <CardDescription>
-              Detailed breakdown showing how each domain performed across different DNS servers
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Create domain groups */}
-              {(() => {
-                const domainGroups = domainResults.reduce<Record<string, DomainResult[]>>((acc, result) => {
-                  if (!acc[result.domain]) {
-                    acc[result.domain] = []
-                  }
-                  acc[result.domain].push(result)
-                  return acc
-                }, {})
+            <Collapsible>
+              <CollapsibleTrigger
+                className="flex items-center justify-between w-full text-left"
+                onClick={() => setIsDomainAnalysisExpanded(!isDomainAnalysisExpanded)}
+              >
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Globe className="h-5 w-5" />
+                    <span>Per-Domain Analysis</span>
+                    <Badge variant="outline">{Object.keys(domainResults.reduce<Record<string, DomainResult[]>>((acc, result) => {
+                      if (!acc[result.domain]) acc[result.domain] = []
+                      acc[result.domain].push(result)
+                      return acc
+                    }, {})).length} domains</Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Detailed breakdown showing how each domain performed across different DNS servers
+                  </CardDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground">
+                    {isDomainAnalysisExpanded ? 'Hide' : 'Show'} details
+                  </span>
+                  {isDomainAnalysisExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-4">
+                  <div className="space-y-6">
+                    {/* Create domain groups */}
+                    {(() => {
+                      const domainGroups = domainResults.reduce<Record<string, DomainResult[]>>((acc, result) => {
+                        if (!acc[result.domain]) {
+                          acc[result.domain] = []
+                        }
+                        acc[result.domain].push(result)
+                        return acc
+                      }, {})
 
-                return Object.entries(domainGroups).map(([domain, results]) => {
-                  const sortedResults = results.sort((a, b) => {
-                    if (a.success !== b.success) return a.success ? -1 : 1
-                    if (a.responseTime && b.responseTime) return a.responseTime - b.responseTime
-                    return 0
-                  })
+                      return Object.entries(domainGroups).map(([domain, results]) => {
+                        const sortedResults = results.sort((a, b) => {
+                          if (a.success !== b.success) return a.success ? -1 : 1
+                          if (a.responseTime && b.responseTime) return a.responseTime - b.responseTime
+                          return 0
+                        })
 
-                  const successRate = (results.filter(r => r.success).length / results.length) * 100
-                  const avgResponseTime = results.filter(r => r.success && r.responseTime)
-                    .reduce((sum, r) => sum + (r.responseTime || 0), 0) /
-                    results.filter(r => r.success && r.responseTime).length
+                        const successRate = (results.filter(r => r.success).length / results.length) * 100
+                        const avgResponseTime = results.filter(r => r.success && r.responseTime)
+                          .reduce((sum, r) => sum + (r.responseTime || 0), 0) /
+                          results.filter(r => r.success && r.responseTime).length
 
-                  // Find related failure analysis
-                  const relatedFailure = failureAnalysis.find(f => f.domain === domain)
+                        // Find related failure analysis
+                        const relatedFailure = failureAnalysis.find(f => f.domain === domain)
+                        const isDomainExpanded = expandedDomains.has(domain)
 
-                  return (
-                    <div key={domain} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h4 className="font-semibold text-lg">{domain}</h4>
-                          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                            <span>Success Rate:
-                              <span className={`font-medium ml-1 ${successRate >= 95 ? 'text-green-600' : successRate > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                {successRate.toFixed(1)}%
-                              </span>
-                            </span>
-                            {avgResponseTime > 0 && (
-                              <span>Avg Response: <span className="font-mono">{avgResponseTime.toFixed(1)}ms</span></span>
-                            )}
-                          </div>
-                        </div>
-                        {relatedFailure && (
-                          <div className="text-right">
-                            <Badge variant={relatedFailure.consistentFailure ? "destructive" : "secondary"}>
-                              {relatedFailure.failurePattern.replace(/_/g, ' ')}
-                            </Badge>
-                            {relatedFailure.upstreamShouldResolve === false && (
-                              <p className="text-xs text-muted-foreground mt-1">Blocked upstream</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b">
-                              <th className="text-left p-2">DNS Server</th>
-                              <th className="text-left p-2">Status</th>
-                              <th className="text-left p-2">Response Time</th>
-                              <th className="text-left p-2">Response Code</th>
-                              <th className="text-left p-2">IP Result</th>
-                              <th className="text-left p-2">Error</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedResults.map((result, idx) => (
-                              <tr key={`${result.serverIp}-${idx}`} className="border-b">
-                                <td className="p-2 font-mono text-xs">{result.serverIp}</td>
-                                <td className="p-2">
-                                  <Badge variant={result.success ? "default" : "destructive"} className="text-xs">
-                                    {result.success ? 'Success' : 'Failed'}
+                        return (
+                          <Collapsible key={domain}>
+                            <CollapsibleTrigger
+                              className="flex items-center justify-between w-full p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
+                              onClick={() => toggleDomainExpansion(domain)}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <Globe className="h-4 w-4 text-gray-500" />
+                                <div>
+                                  <h4 className="font-semibold text-lg text-left">{domain}</h4>
+                                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                    <span>Success Rate:
+                                      <span className={`font-medium ml-1 ${successRate >= 95 ? 'text-green-600' : successRate > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                        {successRate.toFixed(1)}%
+                                      </span>
+                                    </span>
+                                    {avgResponseTime > 0 && (
+                                      <span>Avg Response: <span className="font-mono">{avgResponseTime.toFixed(1)}ms</span></span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {relatedFailure && (
+                                  <Badge variant={relatedFailure.consistentFailure ? "destructive" : "secondary"} className="text-xs">
+                                    {relatedFailure.failurePattern.replace(/_/g, ' ')}
                                   </Badge>
-                                </td>
-                                <td className="p-2 font-mono text-xs">
-                                  {result.responseTime ? `${result.responseTime}ms` : '--'}
-                                </td>
-                                <td className="p-2 font-mono text-xs">
-                                  {result.responseCode || '--'}
-                                </td>
-                                <td className="p-2 font-mono text-xs">
-                                  {result.ipResult || '--'}
-                                </td>
-                                <td className="p-2 text-xs">
-                                  {result.errorMessage || result.errorType || '--'}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )
-                })
-              })()}
-            </div>
-          </CardContent>
+                                )}
+                                <span className="text-sm text-muted-foreground">
+                                  {isDomainExpanded ? 'Hide' : 'Show'} details
+                                </span>
+                                {isDomainExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2">
+                              <div className="ml-7 overflow-x-auto">
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="border-b">
+                                      <th className="text-left p-2">DNS Server</th>
+                                      <th className="text-left p-2">Status</th>
+                                      <th className="text-left p-2">Response Time</th>
+                                      <th className="text-left p-2">Response Code</th>
+                                      <th className="text-left p-2">IP Result</th>
+                                      <th className="text-left p-2">Error</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {sortedResults.map((result, idx) => (
+                                      <tr key={`${result.serverIp}-${idx}`} className="border-b">
+                                        <td className="p-2 font-mono text-xs">{result.serverIp}</td>
+                                        <td className="p-2">
+                                          <Badge variant={result.success ? "default" : "destructive"} className="text-xs">
+                                            {result.success ? 'Success' : 'Failed'}
+                                          </Badge>
+                                        </td>
+                                        <td className="p-2 font-mono text-xs">
+                                          {result.responseTime ? `${result.responseTime}ms` : '--'}
+                                        </td>
+                                        <td className="p-2 font-mono text-xs">
+                                          {result.responseCode || '--'}
+                                        </td>
+                                        <td className="p-2 font-mono text-xs">
+                                          {result.ipResult || '--'}
+                                        </td>
+                                        <td className="p-2 text-xs">
+                                          {result.errorMessage || result.errorType || '--'}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )
+                      })
+                    })()}
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </CardHeader>
         </Card>
       )}
 

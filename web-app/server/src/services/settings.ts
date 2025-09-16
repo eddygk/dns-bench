@@ -4,13 +4,14 @@ import dns from 'dns'
 import fs from 'fs/promises'
 import path from 'path'
 import type { Logger } from 'pino'
-import type { CORSSettings, ServerSettings, LocalDNSConfig } from '@dns-bench/shared'
+import type { CORSSettings, ServerSettings, LocalDNSConfig, PublicDNSConfig, PublicDNSServer } from '@dns-bench/shared'
 
 const reverseLookup = promisify(dns.reverse)
 
 export class SettingsService {
   private settingsFile = path.join(process.cwd(), 'settings.json')
   private localDNSFile = path.join(process.cwd(), 'local-dns.json')
+  private publicDNSFile = path.join(process.cwd(), 'public-dns.json')
   private defaultSettings: ServerSettings = {
     cors: {
       allowIPAccess: true,
@@ -24,6 +25,21 @@ export class SettingsService {
   private defaultLocalDNS: LocalDNSConfig = {
     servers: [
       { ip: '', enabled: true }
+    ]
+  }
+
+  private defaultPublicDNS: PublicDNSConfig = {
+    servers: [
+      { id: 'cloudflare-primary', name: 'Cloudflare Primary', ip: '1.1.1.1', provider: 'Cloudflare', enabled: true, isPrimary: true },
+      { id: 'cloudflare-secondary', name: 'Cloudflare Secondary', ip: '1.0.0.1', provider: 'Cloudflare', enabled: true, isPrimary: false },
+      { id: 'google-primary', name: 'Google Primary', ip: '8.8.8.8', provider: 'Google', enabled: true, isPrimary: true },
+      { id: 'google-secondary', name: 'Google Secondary', ip: '8.8.4.4', provider: 'Google', enabled: true, isPrimary: false },
+      { id: 'quad9-primary', name: 'Quad9 Primary', ip: '9.9.9.9', provider: 'Quad9', enabled: true, isPrimary: true },
+      { id: 'quad9-secondary', name: 'Quad9 Secondary', ip: '149.112.112.112', provider: 'Quad9', enabled: true, isPrimary: false },
+      { id: 'opendns-primary', name: 'OpenDNS Primary', ip: '208.67.222.222', provider: 'OpenDNS', enabled: false, isPrimary: true },
+      { id: 'opendns-secondary', name: 'OpenDNS Secondary', ip: '208.67.220.220', provider: 'OpenDNS', enabled: false, isPrimary: false },
+      { id: 'level3-primary', name: 'Level3 Primary', ip: '4.2.2.1', provider: 'Level3', enabled: false, isPrimary: true },
+      { id: 'level3-secondary', name: 'Level3 Secondary', ip: '4.2.2.2', provider: 'Level3', enabled: false, isPrimary: false }
     ]
   }
 
@@ -742,5 +758,87 @@ export class SettingsService {
         .filter(server => server.enabled && server.ip)
         .map(server => server.ip)
     })
+  }
+
+  // Public DNS Configuration Management
+  async loadPublicDNSConfig(): Promise<PublicDNSConfig> {
+    try {
+      const data = await fs.readFile(this.publicDNSFile, 'utf-8')
+      return JSON.parse(data)
+    } catch (error) {
+      // If no config file exists, create one with defaults
+      this.logger.info('Creating default public DNS configuration file')
+      await this.savePublicDNSConfig(this.defaultPublicDNS)
+      return this.defaultPublicDNS
+    }
+  }
+
+  async savePublicDNSConfig(config: PublicDNSConfig): Promise<PublicDNSConfig> {
+    try {
+      this.validatePublicDNSConfig(config)
+      await fs.writeFile(this.publicDNSFile, JSON.stringify(config, null, 2))
+      this.logger.info({ serversCount: config.servers.length }, 'Public DNS configuration saved')
+      return config
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to save public DNS configuration')
+      throw error
+    }
+  }
+
+  private validatePublicDNSConfig(config: PublicDNSConfig): void {
+    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+
+    if (!config.servers || config.servers.length === 0) {
+      throw new Error('At least one DNS server is required')
+    }
+
+    if (config.servers.length > 20) {
+      throw new Error('Maximum of 20 DNS servers allowed')
+    }
+
+    // Validate each server
+    for (let i = 0; i < config.servers.length; i++) {
+      const server = config.servers[i]
+
+      if (!server.id || !server.name || !server.ip || !server.provider) {
+        throw new Error(`DNS server ${i + 1} is missing required fields`)
+      }
+
+      if (!ipRegex.test(server.ip)) {
+        throw new Error(`DNS server ${i + 1} must have a valid IP address`)
+      }
+    }
+
+    // Check for duplicate IDs
+    const ids = config.servers.map(s => s.id)
+    const uniqueIds = new Set(ids)
+    if (ids.length !== uniqueIds.size) {
+      throw new Error('Duplicate DNS server IDs are not allowed')
+    }
+
+    // Check for duplicate IPs
+    const ips = config.servers.map(s => s.ip)
+    const uniqueIPs = new Set(ips)
+    if (ips.length !== uniqueIPs.size) {
+      throw new Error('Duplicate DNS server IP addresses are not allowed')
+    }
+  }
+
+  async getEnabledPublicDNSServers(): Promise<string[]> {
+    const config = await this.loadPublicDNSConfig()
+    return config.servers
+      .filter(server => server.enabled)
+      .map(server => server.ip)
+  }
+
+  async getPublicDNSServerMap(): Promise<Map<string, string>> {
+    const config = await this.loadPublicDNSConfig()
+    const map = new Map<string, string>()
+    config.servers
+      .filter(server => server.enabled)
+      .forEach(server => {
+        map.set(server.ip, server.name)
+      })
+    return map
   }
 }

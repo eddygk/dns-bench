@@ -113,6 +113,17 @@ const localDNSSchema = z.object({
   })).min(1).max(10)
 })
 
+const publicDNSSchema = z.object({
+  servers: z.array(z.object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    ip: z.string().ip(),
+    provider: z.string().min(1),
+    enabled: z.boolean(),
+    isPrimary: z.boolean().optional()
+  })).min(1).max(20)
+})
+
 // Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
@@ -224,6 +235,32 @@ app.delete('/api/results/:testId', async (req, res) => {
   } catch (error) {
     logger.error({ error, testId: req.params.testId }, 'Failed to delete result')
     res.status(500).json({ error: 'Failed to delete result' })
+  }
+})
+
+app.delete('/api/results', async (req, res) => {
+  try {
+    const success = await dbService.clearAllTestResults()
+    if (!success) {
+      return res.status(404).json({ error: 'No test results found to clear' })
+    }
+
+    logger.info('All test results cleared')
+    res.json({ success: true, message: 'All test results cleared successfully' })
+  } catch (error) {
+    logger.error({ error }, 'Failed to clear all results')
+    res.status(500).json({ error: 'Failed to clear all results' })
+  }
+})
+
+app.post('/api/maintenance/cleanup-orphaned', async (req, res) => {
+  try {
+    const result = await dbService.cleanupOrphanedRecords()
+    logger.info(result, 'Orphaned records cleanup completed')
+    res.json({ success: true, cleanup: result })
+  } catch (error) {
+    logger.error({ error }, 'Failed to cleanup orphaned records')
+    res.status(500).json({ error: 'Failed to cleanup orphaned records' })
   }
 })
 
@@ -365,6 +402,32 @@ app.put('/api/settings/local-dns', async (req, res) => {
     } else {
       logger.error({ error }, 'Failed to save local DNS configuration')
       res.status(500).json({ error: 'Failed to save local DNS configuration' })
+    }
+  }
+})
+
+// Public DNS configuration endpoints
+app.get('/api/settings/public-dns', async (req, res) => {
+  try {
+    const config = await settingsService.loadPublicDNSConfig()
+    res.json({ config })
+  } catch (error) {
+    logger.error({ error }, 'Failed to get public DNS configuration')
+    res.status(500).json({ error: 'Failed to get public DNS configuration' })
+  }
+})
+
+app.put('/api/settings/public-dns', async (req, res) => {
+  try {
+    const config = publicDNSSchema.parse(req.body)
+    const savedConfig = await settingsService.savePublicDNSConfig(config)
+    res.json({ config: savedConfig })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid public DNS configuration', details: error.errors })
+    } else {
+      logger.error({ error }, 'Failed to save public DNS configuration')
+      res.status(500).json({ error: 'Failed to save public DNS configuration' })
     }
   }
 })

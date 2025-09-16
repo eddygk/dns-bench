@@ -155,4 +155,52 @@ export interface BenchmarkResult {
     successfulQueries: number;
     failedQueries: number;
 }
+export interface CORSSettings {
+    allowIPAccess: boolean;
+    allowHostnameAccess: boolean;
+    detectedHostname?: string;
+    detectedHostIP?: string;
+    customOrigins: string[];
+}
+export interface ServerSettings {
+    cors: CORSSettings;
+    port: number;
+    logLevel: string;
+}
+export interface UpdateCORSSettingsRequest {
+    settings: CORSSettings;
+}
+export interface GetServerSettingsResponse {
+    settings: ServerSettings;
+}
+export interface LocalDNSServer {
+    ip: string;
+    enabled: boolean;
+}
+export interface LocalDNSConfig {
+    servers: LocalDNSServer[];
+}
+export interface UpdateLocalDNSRequest {
+    config: LocalDNSConfig;
+}
+export interface GetLocalDNSResponse {
+    config: LocalDNSConfig;
+}
+export interface PublicDNSServer {
+    id: string;
+    name: string;
+    ip: string;
+    provider: string;
+    enabled: boolean;
+    isPrimary?: boolean;
+}
+export interface PublicDNSConfig {
+    servers: PublicDNSServer[];
+}
+export interface UpdatePublicDNSRequest {
+    config: PublicDNSConfig;
+}
+export interface GetPublicDNSResponse {
+    config: PublicDNSConfig;
+}
 //# sourceMappingURL=types.d.ts.map

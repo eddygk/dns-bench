@@ -25,6 +25,7 @@ The DNS Bench Web project is a well-architected, modern full-stack application t
 ✅ Responsive UI with dark/light theme support
 ✅ Docker containerization with multi-stage builds
 ✅ Security implementations (rate limiting, CORS, input validation)
+✅ **React Query v5 Compatibility** - Fixed DNS server saving issues (September 2025)
 
 ## Detailed Analysis
 
@@ -67,6 +68,12 @@ The DNS Bench Web project is a well-architected, modern full-stack application t
 - Dark/light theme support with CSS variables
 - Intuitive UI with clear progress indicators
 - Real-time feedback during benchmark execution
+
+#### 7. **React Query Integration & State Management**
+- **React Query v5 Compatibility:** Updated to use modern patterns (September 2025)
+- Proper cache invalidation strategies implemented
+- useEffect-based state synchronization replacing deprecated onSuccess callbacks
+- Efficient data fetching with automatic refetching and background updates
 
 ### 🔴 Critical Issues Requiring Immediate Attention
 
@@ -222,6 +229,64 @@ import { createAdapter } from '@socket.io/redis-adapter'
 io.adapter(createAdapter(redisClient, redisSubClient))
 ```
 
+## Recent Fixes & Improvements
+
+### ✅ React Query v5 Compatibility Fix (September 2025)
+
+**Issues Resolved:**
+1. DNS server configuration changes were not saving properly via the Settings page
+2. Saved DNS servers were not displaying on the Dashboard page
+
+**Root Cause:** React Query v5 removed the deprecated `onSuccess` callback from `useQuery` hooks, causing state updates to fail when data was fetched.
+
+**Solution Implemented:**
+- **Files Modified:**
+  - `/web-app/client/src/pages/settings.tsx` (Settings page fix)
+  - `/web-app/client/src/pages/dashboard.tsx` (Dashboard display fix)
+- **Lines Changed:**
+  - settings.tsx: 62-127 (removed onSuccess callbacks), 105-134 (added useEffect hooks), 205, 226, 146 (fixed invalidateQueries calls)
+  - dashboard.tsx: 60-74 (removed onSuccess callback, added useEffect pattern)
+- **Pattern Used:** Replaced `onSuccess` callbacks with `useEffect` hooks that respond to query data changes
+- **API Updates:** Changed `queryClient.invalidateQueries(['key'])` to `queryClient.invalidateQueries({ queryKey: ['key'] })`
+
+**Code Example:**
+```typescript
+// BEFORE (deprecated in React Query v5)
+const { data: localDNSData } = useQuery({
+  queryKey: ['settings-local-dns-config'],
+  queryFn: fetchLocalDNS,
+  onSuccess: (data) => {
+    if (data) setLocalDNSConfig(data)
+  }
+})
+
+// AFTER (React Query v5 compatible)
+const { data: localDNSData } = useQuery({
+  queryKey: ['settings-local-dns-config'],
+  queryFn: fetchLocalDNS
+})
+
+useEffect(() => {
+  if (localDNSData) {
+    setLocalDNSConfig(localDNSData)
+  }
+}, [localDNSData])
+```
+
+**Verification:**
+- ✅ Backend API confirmed working correctly (returns all 6 configured DNS servers)
+- ✅ File permissions verified (local-dns.json writable)
+- ✅ Frontend state updates now properly synchronized in both Settings and Dashboard
+- ✅ DNS server additions save and persist correctly
+- ✅ Dashboard properly displays all configured local DNS servers
+- ✅ Consistent React Query v5 pattern applied across application
+
+**Impact:** This fix resolves critical user-facing issues where:
+1. DNS server configuration changes appeared to save but were not persisted
+2. Saved DNS servers were invisible on the Dashboard, causing user confusion
+3. Users could not effectively configure and verify custom DNS servers
+The fix ensures full end-to-end functionality from Settings configuration to Dashboard display.
+
 ## Technical Debt Analysis
 
 ### Package Dependencies
@@ -252,6 +317,8 @@ io.adapter(createAdapter(redisClient, redisSubClient))
 - [ ] Create database migration system
 - [ ] Add React error boundaries
 - [ ] Implement global error handling
+- [x] **COMPLETED**: Fix React Query v5 compatibility issues in Settings page (September 2025)
+- [x] **COMPLETED**: Fix React Query v5 compatibility issues in Dashboard page (September 2025)
 
 ### Phase 2: Performance & UX (2-3 weeks)
 - [ ] Add performance optimizations (memo, code splitting)

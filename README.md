@@ -7,9 +7,9 @@ A modern web-based DNS benchmarking application that tests and compares DNS serv
 ## 🎯 Features
 
 - **🌐 Web-Based Interface** - Modern React UI with shadcn/ui components
-- **⚙️ Manual DNS Configuration** - Configure your local DNS servers through the dashboard (with auto-detection fallback)
+- **⚙️ Configurable DNS Servers** - Manage both local and public DNS servers through intuitive Settings interface
 - **⚡ Performance Benchmarking** - Tests response times across 20 diverse domains
-- **🌍 Public DNS Comparison** - Compare against 10 popular public DNS providers
+- **🌍 Customizable Public DNS** - Add, edit, enable/disable public DNS providers (default: Cloudflare, Google, Quad9)
 - **📊 Real-Time Updates** - Live progress tracking via Socket.IO during benchmarks
 - **📈 Enhanced Failure Diagnostics** - Tabbed interface with repeat offender detection and detailed error analysis
 - **📋 Statistical Analysis** - Avg, min, max, median response times and success rates
@@ -60,16 +60,32 @@ npm run dev  # In both directories
 - Real-time system status
 
 ### DNS Configuration
-Navigate to **Settings** to configure your local DNS servers:
-1. Enter Primary DNS Server IP
+Navigate to **Settings** to configure your DNS servers:
+
+#### Local DNS Servers
+1. Enter Primary DNS Server IP (e.g., 10.10.20.30)
 2. Enter Secondary DNS Server IP (optional)
 3. Click **Save Settings**
 4. Your configured DNS will be used in benchmarks
 
-**Note**: If no DNS servers are configured, the system will attempt auto-detection from:
+**Note**: If no local DNS servers are configured, the system will attempt auto-detection from:
 - `/etc/resolv.conf`
 - systemd-resolved
 - NetworkManager
+
+#### Public DNS Servers
+1. View pre-configured popular providers (Cloudflare, Google, Quad9, OpenDNS, Level3)
+2. Enable/disable individual servers using toggle switches
+3. Add custom DNS servers with **Add Custom DNS Server** button
+4. Configure server names, IPs, and providers
+5. Click **Save Public DNS Configuration**
+
+**Features**:
+- ✅ Enable/disable servers without deleting them
+- ✅ Add up to 20 total public DNS servers
+- ✅ Built-in servers cannot be deleted but can be disabled
+- ✅ Custom servers can be added and removed
+- ✅ Benchmarks automatically adapt to your configuration
 
 ### Benchmark Page
 - Start comprehensive DNS tests
@@ -82,6 +98,7 @@ Navigate to **Settings** to configure your local DNS servers:
 - **Performance comparison charts** (using Recharts)
 - **Failure diagnostics**: Repeat offender detection and detailed error analysis
 - **Server breakdown**: Per-server failure analysis showing problematic DNS servers
+- **Per-Server Domain Analysis**: Collapsible server entries showing detailed domain-by-domain test results
 - **Smart recommendations**: Actionable insights based on performance data
 - **Raw diagnostics**: Technical DNS query output for troubleshooting
 - **Statistical breakdown** per DNS server with success rates
@@ -139,6 +156,8 @@ Configuration is stored in `local-dns.json` on the server.
 | `/api/dns/current` | GET | Get current DNS servers (configured or auto-detected) |
 | `/api/settings/local-dns` | GET | Get local DNS configuration |
 | `/api/settings/local-dns` | PUT | Update local DNS servers |
+| `/api/settings/public-dns` | GET | Get public DNS server configuration |
+| `/api/settings/public-dns` | PUT | Update public DNS servers |
 | `/api/benchmark/start` | POST | Start DNS benchmark |
 | `/api/results` | GET | Get all benchmark results |
 | `/api/results/:testId` | GET | Get specific test results |
@@ -152,16 +171,22 @@ Real-time updates during benchmarking:
 - `benchmark:error` - Error notifications
 - `benchmark:domain` - Individual domain test results
 
-## 🌐 Tested DNS Providers
+## 🌐 Configurable DNS Providers
 
-| Provider | Primary | Secondary | Features |
-|----------|---------|-----------|----------|
-| **Your Local DNS** | User configured | User configured | LAN/ISP servers |
-| **Cloudflare** | 1.1.1.1 | 1.0.0.1 | Fast, privacy-focused |
-| **Google** | 8.8.8.8 | 8.8.4.4 | Reliable, widely used |
-| **Quad9** | 9.9.9.9 | 149.112.112.112 | Security, malware blocking |
-| **OpenDNS** | 208.67.222.222 | 208.67.220.220 | Content filtering |
-| **Level3** | 4.2.2.1 | 4.2.2.2 | ISP-grade reliability |
+### Default Public DNS Servers
+| Provider | Primary | Secondary | Default Status | Features |
+|----------|---------|-----------|----------------|----------|
+| **Cloudflare** | 1.1.1.1 | 1.0.0.1 | ✅ Enabled | Fast, privacy-focused |
+| **Google** | 8.8.8.8 | 8.8.4.4 | ✅ Enabled | Reliable, widely used |
+| **Quad9** | 9.9.9.9 | 149.112.112.112 | ✅ Enabled | Security, malware blocking |
+| **OpenDNS** | 208.67.222.222 | 208.67.220.220 | ❌ Disabled | Content filtering |
+| **Level3** | 4.2.2.1 | 4.2.2.2 | ❌ Disabled | ISP-grade reliability |
+
+### User-Configurable Options
+- **Local DNS**: Configure your LAN/ISP DNS servers manually
+- **Custom Public DNS**: Add any additional public DNS providers
+- **Enable/Disable**: Toggle any server without deleting configuration
+- **Dynamic Testing**: Benchmarks adapt to your enabled server selection
 
 ## 📋 Requirements
 
@@ -266,22 +291,50 @@ If accessing from another device on your network:
 ### Common Issues
 
 **"Could not detect DNS servers"**
-- Configure DNS servers manually in Settings
+- Configure local DNS servers manually in Settings → Local DNS Servers
 - Check if running in Docker (may not have access to host DNS)
 - Verify network permissions
+
+**"No enabled public DNS servers"**
+- Go to Settings → Public DNS Servers and enable at least one server
+- Default configuration includes Cloudflare, Google, and Quad9 enabled
+- Verify your configuration and save changes
+
+**"Failed to save local DNS configuration" (EACCES error)**
+- Fix file permissions: `chmod 664 web-app/server/local-dns.json`
+- Ensure the server process has write access to configuration files
+- Check server logs for permission errors
+
+**"Local DNS servers not saving when added via Settings page"**
+- ✅ **FIXED**: React Query v5 compatibility issue resolved
+- Issue was deprecated `onSuccess` callbacks in useQuery hooks
+- Solution: Replaced with `useEffect` hooks for state updates
+- Updated `invalidateQueries` calls to use v5 API: `{ queryKey: ['...'] }`
+
+**"Local DNS servers not appearing on Dashboard after saving"**
+- ✅ **FIXED**: Same React Query v5 compatibility issue in dashboard
+- Fixed deprecated `onSuccess` callback in dashboard.tsx useQuery hook
+- Applied consistent `useEffect` pattern for state synchronization
+- Dashboard now properly displays all configured local DNS servers
 
 **Real-time updates not working**
 - Check WebSocket connection in browser console
 - Ensure Socket.IO is connecting to correct URL
 - Verify CORS settings allow your origin
 
+**Local DNS servers show as "Current-IP" in real-time results**
+- This has been fixed - local DNS servers now display as IP addresses only
+- Restart the application if you still see the old format
+
 ## 📈 Performance Tips
 
-1. **Configure local DNS first** - Set your actual LAN DNS servers in Settings
-2. **Run multiple tests** - Performance varies by time of day and network load
-3. **Compare results** - Look for consistency across multiple test runs
-4. **Consider latency** - Geographically closer servers typically perform better
-5. **Check success rates** - Reliability is as important as speed
+1. **Configure local DNS first** - Set your actual LAN DNS servers in Settings → Local DNS Servers
+2. **Customize public DNS servers** - Enable only the providers you want to test in Settings → Public DNS Servers
+3. **Run multiple tests** - Performance varies by time of day and network load
+4. **Compare results** - Look for consistency across multiple test runs
+5. **Consider latency** - Geographically closer servers typically perform better
+6. **Check success rates** - Reliability is as important as speed
+7. **Use quick tests** - Enable 3-4 key DNS providers for faster benchmarking
 
 ## 🔄 Updating
 

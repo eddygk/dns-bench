@@ -18,8 +18,15 @@ import {
 import type { BenchmarkResult, LocalDNSConfig } from '@dns-bench/shared'
 import { apiRequest } from '@/lib/api'
 
-const mockGetRecentResults = async (): Promise<BenchmarkResult[]> => {
-  return []
+const getRecentResults = async (): Promise<BenchmarkResult[]> => {
+  try {
+    const response = await apiRequest('/api/results?limit=5')
+    const data = await response.json()
+    return data.results || []
+  } catch (error) {
+    console.error('Failed to fetch recent results:', error)
+    return []
+  }
 }
 
 export function Dashboard() {
@@ -31,19 +38,7 @@ export function Dashboard() {
     ]
   })
 
-  // Load saved DNS configuration on mount
-  useEffect(() => {
-    const loadLocalDNS = async () => {
-      try {
-        const response = await apiRequest('/api/settings/local-dns')
-        const data = await response.json()
-        setLocalDNS(data.config)
-      } catch (error) {
-        console.warn('Failed to load local DNS config:', error)
-      }
-    }
-    loadLocalDNS()
-  }, [])
+  // DNS configuration is loaded via React Query with useEffect for state sync
 
   const getActiveDNSServers = () => {
     return localDNS.servers
@@ -57,13 +52,34 @@ export function Dashboard() {
 
   const { data: recentResults, isLoading: isLoadingResults } = useQuery({
     queryKey: ['recent-results'],
-    queryFn: mockGetRecentResults
+    queryFn: getRecentResults,
+    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchOnWindowFocus: true
   })
+
+  // Use React Query for DNS config to get automatic refetching
+  const { data: dnsConfig } = useQuery({
+    queryKey: ['dashboard-local-dns-config'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/settings/local-dns')
+      const data = await response.json()
+      return data.config
+    },
+    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchOnWindowFocus: true
+  })
+
+  // Update local state when query data changes (React Query v5 compatible)
+  useEffect(() => {
+    if (dnsConfig) {
+      setLocalDNS(dnsConfig)
+    }
+  }, [dnsConfig])
 
   const handleQuickTest = async () => {
     setIsStartingTest(true)
-    // Navigate to benchmark page with quick test configuration
-    navigate('/benchmark?type=quick')
+    // Navigate to benchmark page and auto-start the quick test
+    navigate('/benchmark?type=quick&autostart=true')
   }
 
   const handleFullBenchmark = async () => {
@@ -153,7 +169,7 @@ export function Dashboard() {
               <CardTitle>Quick Test</CardTitle>
             </div>
             <CardDescription>
-              Test your current DNS against top providers
+              Test enabled local DNS + top 3 public providers
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -175,7 +191,7 @@ export function Dashboard() {
               <CardTitle>Full Benchmark</CardTitle>
             </div>
             <CardDescription>
-              Comprehensive test against all providers
+              Test all enabled DNS servers (local + public)
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -225,3 +225,25 @@ export interface UpdateLocalDNSRequest {
 export interface GetLocalDNSResponse {
   config: LocalDNSConfig
 }
+
+// Public DNS Server Configuration types
+export interface PublicDNSServer {
+  id: string
+  name: string
+  ip: string
+  provider: string
+  enabled: boolean
+  isPrimary?: boolean
+}
+
+export interface PublicDNSConfig {
+  servers: PublicDNSServer[]
+}
+
+export interface UpdatePublicDNSRequest {
+  config: PublicDNSConfig
+}
+
+export interface GetPublicDNSResponse {
+  config: PublicDNSConfig
+}

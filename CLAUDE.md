@@ -68,9 +68,20 @@ This project follows spec-kit methodology for feature development:
 - ✅ **Tabbed Results Interface**: Overview, Failures, Server Analysis, Raw Diagnostics
 - ✅ **Repeat Offender Detection**: Identifies domains failing 2+ times with detailed tracking
 - ✅ **Server Failure Analysis**: Per-server breakdown showing problematic DNS servers
+- ✅ **Per-Server Domain Analysis**: Collapsible server entries showing detailed domain-by-domain test results
 - ✅ **Raw Diagnostics**: Technical DNS query output for troubleshooting
 - ✅ **Smart Recommendations**: Actionable insights based on performance data
 - ✅ **Enhanced Visibility**: Transforms buried failure data into intuitive interface
+
+### ✅ CONFIGURABLE DNS SERVERS - COMPLETED
+- ✅ **Public DNS Management**: Users can add, edit, enable/disable public DNS servers via Settings UI
+- ✅ **Pre-configured Providers**: Built-in support for Cloudflare, Google, Quad9, OpenDNS, Level3
+- ✅ **Custom DNS Servers**: Add unlimited custom public DNS servers (max 20 total)
+- ✅ **Granular Control**: Enable/disable individual servers without deleting configuration
+- ✅ **Smart Server Selection**: Quick tests use top 3 enabled + local DNS, full tests use all enabled servers
+- ✅ **Persistent Configuration**: Settings saved to `public-dns.json` with API endpoints `/api/settings/public-dns`
+- ✅ **Fixed Server Naming**: Local DNS servers display as IP only (e.g., 10.10.20.30 instead of Current-10.10.20.30)
+- ✅ **Dynamic Testing**: Benchmarks adapt to user-configured servers instead of hardcoded lists
 
 ### VERIFIED WORKING FEATURES
 - 🧪 **Testing Integration**: Frontend fully connected to backend benchmarking
@@ -78,10 +89,15 @@ This project follows spec-kit methodology for feature development:
 - 📈 **History Views**: Browse and compare past benchmark results functional
 - ⚙️ **Custom Settings**: User-configurable DNS servers and test options active
 - 🔍 **Failure Analysis**: Complete visibility into DNS test failures and diagnostics
+- 🔧 **Configurable DNS Management**: Full CRUD operations for public DNS servers via Settings page
+- 📡 **Dynamic Server Selection**: Benchmarks automatically use user-configured enabled servers
+- 📋 **Local DNS Configuration**: Save/load local DNS servers with proper file permissions
+- 🏷️ **Real-time Server Display**: Local DNS servers show as IP addresses only in benchmark results
+- 🔄 **Permission Management**: Proper file access controls for configuration files
 
 ## Project Overview
 
-DNS Bench Web is a modern, containerized DNS benchmarking web application that transforms the original CLI tool into a full-stack web experience. The application provides real-time DNS performance testing with interactive visualizations and comprehensive result analytics.
+DNS Bench Web is a modern, containerized DNS benchmarking web application that transforms the original CLI tool into a full-stack web experience. The application provides real-time DNS performance testing with interactive visualizations, comprehensive result analytics, and fully configurable DNS server management through an intuitive Settings interface.
 
 ## Architecture
 
@@ -111,12 +127,13 @@ The project consists of:
 - **Data Persistence**: SQLite database for benchmark history and results
 
 #### Public DNS Servers Tested
-Benchmarks against 10 public DNS providers:
-- **Cloudflare**: 1.1.1.1, 1.0.0.1
-- **Google**: 8.8.8.8, 8.8.4.4
-- **Quad9**: 9.9.9.9, 149.112.112.112
-- **OpenDNS**: 208.67.222.222, 208.67.220.220
-- **Level3**: 4.2.2.1, 4.2.2.2
+Benchmarks against user-configurable public DNS providers (default configuration):
+- **Cloudflare**: 1.1.1.1, 1.0.0.1 (enabled by default)
+- **Google**: 8.8.8.8, 8.8.4.4 (enabled by default)
+- **Quad9**: 9.9.9.9, 149.112.112.112 (enabled by default)
+- **OpenDNS**: 208.67.222.222, 208.67.220.220 (disabled by default)
+- **Level3**: 4.2.2.1, 4.2.2.2 (disabled by default)
+- **Custom**: Users can add up to 20 total public DNS servers via Settings page
 
 ## Development Commands
 
@@ -249,6 +266,10 @@ localhost:6379
 # Fix node_modules permissions before starting:
 sudo chown -R $USER:$USER web-app/client/node_modules
 sudo chown -R $USER:$USER web-app/server/node_modules
+
+# Fix configuration file permissions:
+chmod 664 web-app/server/local-dns.json     # Allow server write access
+chmod 664 web-app/server/public-dns.json    # Allow server write access
 ```
 
 ## Docker Disk Space Management
@@ -304,3 +325,58 @@ df -h /
 - Consider removing unused Go runtime: `sudo rm -rf /usr/lib/go-1.18` (saves 316MB)
 - Clean VS Code entirely if not needed: `rm -rf ~/.vscode-server` (saves 647MB)
 - Remove unused Node versions: `nvm uninstall <version>` (saves ~280MB per version)
+
+## Common Issues & Troubleshooting
+
+### Local DNS Configuration Issues
+
+**"Failed to save local DNS configuration" (EACCES error)**
+- **Root Cause**: Configuration file lacks write permissions for the Node.js server process
+- **Fix**: Apply proper file permissions to the configuration file:
+  ```bash
+  chmod 664 web-app/server/local-dns.json
+  ```
+- **Prevention**: Ensure configuration files are writable by the server process during setup
+- **Verification**: Test with API call: `curl -X PUT http://localhost:3001/api/settings/local-dns -H "Content-Type: application/json" -d '{"servers":[{"ip":"10.10.20.30","enabled":true}]}'`
+
+### Real-time Display Issues
+
+**Local DNS servers showing as "Current-{IP}" instead of IP address**
+- **Root Cause**: Legacy server naming logic in frontend benchmark display
+- **Fix**: Modified `getServerName` function in `/web-app/client/src/pages/benchmark.tsx:226-243`
+- **Code Change**: Changed from `return \`Current-${ip}\`` to `return ip` for local DNS servers
+- **Impact**: Real-time benchmark results now correctly display local DNS servers as clean IP addresses (e.g., "10.10.20.30" instead of "Current-10.10.20.30")
+
+### ✅ REACT QUERY V5 COMPATIBILITY - COMPLETED (September 2025)
+- ✅ **Fixed DNS Server Saving Issue**: Resolved React Query v5 compatibility problems in Settings page
+- ✅ **Fixed Dashboard Display Issue**: Resolved React Query v5 compatibility problems in Dashboard page
+- ✅ **Removed Deprecated onSuccess Callbacks**: Eliminated deprecated `onSuccess` in all `useQuery` hooks
+- ✅ **Added useEffect State Management**: Implemented React Query v5 compatible state updates across app
+- ✅ **Updated invalidateQueries API**: Fixed calls to use new v5 syntax `{ queryKey: ['...'] }`
+- ✅ **Verified Full Functionality**: DNS server additions save correctly and display properly on dashboard
+
+### Technical Details of React Query Fix
+**Files Modified**:
+- `/web-app/client/src/pages/settings.tsx:62-127, 105-134, 205, 226, 146` (Settings page fix)
+- `/web-app/client/src/pages/dashboard.tsx:60-74` (Dashboard display fix)
+
+**Root Cause**: React Query v5 removed `onSuccess` callbacks from `useQuery` hooks
+**Solution**:
+- Replaced `onSuccess` callbacks with `useEffect` hooks that respond to data changes
+- Updated `queryClient.invalidateQueries(['key'])` to `queryClient.invalidateQueries({ queryKey: ['key'] })`
+- State updates now properly trigger when query data changes
+- Applied consistent pattern across both Settings and Dashboard components
+
+### Session 2 Fix (Dashboard Display)
+**Issue**: 6 DNS servers saved correctly but not displaying on Dashboard
+**Root Cause**: Dashboard was using same deprecated `onSuccess` pattern as Settings page
+**Files Modified**: `/web-app/client/src/pages/dashboard.tsx:60-74`
+**Pattern Applied**: Same useEffect-based state sync as Settings page fix
+
+### Missing Features (User Reports)
+
+**"My per-server analysis is gone from the results page"**
+- **Status**: Feature is working correctly and available
+- **Location**: Results page → "Server Analysis" tab
+- **Features**: Collapsible server entries with detailed domain-by-domain breakdown
+- **Verification**: Check the tabbed interface: Overview, Failures, Server Analysis, Raw Diagnostics

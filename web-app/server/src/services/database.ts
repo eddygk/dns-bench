@@ -237,17 +237,46 @@ export class DatabaseService {
 
   async deleteTestResult(testId: string): Promise<boolean> {
     const deleteResults = this.db.prepare('DELETE FROM test_results WHERE test_run_id = ?')
+    const deleteDomainResults = this.db.prepare('DELETE FROM domain_test_results WHERE test_run_id = ?')
+    const deleteFailureAnalysis = this.db.prepare('DELETE FROM failure_analysis WHERE test_run_id = ?')
     const deleteRun = this.db.prepare('DELETE FROM test_runs WHERE id = ?')
-    
+
     const transaction = this.db.transaction(() => {
       deleteResults.run(testId)
-      deleteRun.run(testId)
+      deleteDomainResults.run(testId)
+      deleteFailureAnalysis.run(testId)
+      const info = deleteRun.run(testId)
+      return info.changes > 0 // Return true if at least one row was deleted
     })
-    
+
     try {
-      transaction()
-      return true
+      const result = transaction()
+      return Boolean(result)
     } catch (error) {
+      console.error('Failed to delete test result:', error)
+      return false
+    }
+  }
+
+  async clearAllTestResults(): Promise<boolean> {
+    const deleteAllResults = this.db.prepare('DELETE FROM test_results')
+    const deleteAllDomainResults = this.db.prepare('DELETE FROM domain_test_results')
+    const deleteAllFailureAnalysis = this.db.prepare('DELETE FROM failure_analysis')
+    const deleteAllRuns = this.db.prepare('DELETE FROM test_runs')
+
+    const transaction = this.db.transaction(() => {
+      deleteAllResults.run()
+      deleteAllDomainResults.run()
+      deleteAllFailureAnalysis.run()
+      const info = deleteAllRuns.run()
+      return info.changes > 0 // Return true if at least one row was deleted
+    })
+
+    try {
+      const result = transaction()
+      return Boolean(result)
+    } catch (error) {
+      console.error('Failed to clear all test results:', error)
       return false
     }
   }
@@ -301,11 +330,11 @@ export class DatabaseService {
           testRunId,
           result.serverIp,
           result.domain,
-          result.success,
+          result.success ? 1 : 0,  // Convert boolean to integer for SQLite
           result.responseTime || null,
           result.responseCode || null,
           result.errorType || null,
-          result.authoritative || null,
+          result.authoritative ? 1 : 0,  // Convert boolean to integer for SQLite
           result.queryTime || null,
           result.ipResult || null,
           result.errorMessage || null,
@@ -315,7 +344,12 @@ export class DatabaseService {
       }
     })
 
-    transaction()
+    try {
+      transaction()
+    } catch (error) {
+      console.error('Failed to save domain results:', error)
+      throw error
+    }
   }
 
   async saveFailureAnalysis(testRunId: string, failureAnalysis: Array<{
@@ -337,15 +371,20 @@ export class DatabaseService {
           randomUUID(),
           testRunId,
           analysis.domain,
-          analysis.consistentFailure,
-          analysis.upstreamShouldResolve || null,
+          analysis.consistentFailure ? 1 : 0,  // Convert boolean to integer for SQLite
+          analysis.upstreamShouldResolve !== undefined ? (analysis.upstreamShouldResolve ? 1 : 0) : null,  // Convert boolean to integer for SQLite
           analysis.failurePattern,
           Date.now()
         )
       }
     })
 
-    transaction()
+    try {
+      transaction()
+    } catch (error) {
+      console.error('Failed to save failure analysis:', error)
+      throw error
+    }
   }
 
   async getDomainResults(testRunId: string): Promise<Array<{
@@ -444,6 +483,45 @@ export class DatabaseService {
       errorType: row.error_type,
       errorMessage: row.error_message
     }))
+  }
+
+  async cleanupOrphanedRecords(): Promise<{ deletedDomainResults: number; deletedFailureAnalysis: number; deletedTestResults: number }> {
+    // Find orphaned domain_test_results (no matching test_run)
+    const deleteDomainResults = this.db.prepare(`
+      DELETE FROM domain_test_results
+      WHERE test_run_id NOT IN (SELECT id FROM test_runs)
+    `)
+
+    // Find orphaned failure_analysis (no matching test_run)
+    const deleteFailureAnalysis = this.db.prepare(`
+      DELETE FROM failure_analysis
+      WHERE test_run_id NOT IN (SELECT id FROM test_runs)
+    `)
+
+    // Find orphaned test_results (no matching test_run)
+    const deleteTestResults = this.db.prepare(`
+      DELETE FROM test_results
+      WHERE test_run_id NOT IN (SELECT id FROM test_runs)
+    `)
+
+    const transaction = this.db.transaction(() => {
+      const domainInfo = deleteDomainResults.run()
+      const failureInfo = deleteFailureAnalysis.run()
+      const testInfo = deleteTestResults.run()
+
+      return {
+        deletedDomainResults: domainInfo.changes,
+        deletedFailureAnalysis: failureInfo.changes,
+        deletedTestResults: testInfo.changes
+      }
+    })
+
+    try {
+      return transaction()
+    } catch (error) {
+      console.error('Failed to cleanup orphaned records:', error)
+      throw error
+    }
   }
 
   close(): void {

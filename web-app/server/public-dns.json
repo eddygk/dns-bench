@@ -1,0 +1,84 @@
+{
+  "servers": [
+    {
+      "id": "cloudflare-primary",
+      "name": "Cloudflare Primary",
+      "ip": "1.1.1.1",
+      "provider": "Cloudflare",
+      "enabled": true,
+      "isPrimary": true
+    },
+    {
+      "id": "cloudflare-secondary",
+      "name": "Cloudflare Secondary",
+      "ip": "1.0.0.1",
+      "provider": "Cloudflare",
+      "enabled": true,
+      "isPrimary": false
+    },
+    {
+      "id": "google-primary",
+      "name": "Google Primary",
+      "ip": "8.8.8.8",
+      "provider": "Google",
+      "enabled": true,
+      "isPrimary": true
+    },
+    {
+      "id": "google-secondary",
+      "name": "Google Secondary",
+      "ip": "8.8.4.4",
+      "provider": "Google",
+      "enabled": true,
+      "isPrimary": false
+    },
+    {
+      "id": "quad9-primary",
+      "name": "Quad9 Primary",
+      "ip": "9.9.9.9",
+      "provider": "Quad9",
+      "enabled": true,
+      "isPrimary": true
+    },
+    {
+      "id": "quad9-secondary",
+      "name": "Quad9 Secondary",
+      "ip": "149.112.112.112",
+      "provider": "Quad9",
+      "enabled": true,
+      "isPrimary": false
+    },
+    {
+      "id": "opendns-primary",
+      "name": "OpenDNS Primary",
+      "ip": "208.67.222.222",
+      "provider": "OpenDNS",
+      "enabled": false,
+      "isPrimary": true
+    },
+    {
+      "id": "opendns-secondary",
+      "name": "OpenDNS Secondary",
+      "ip": "208.67.220.220",
+      "provider": "OpenDNS",
+      "enabled": false,
+      "isPrimary": false
+    },
+    {
+      "id": "level3-primary",
+      "name": "Level3 Primary",
+      "ip": "4.2.2.1",
+      "provider": "Level3",
+      "enabled": false,
+      "isPrimary": true
+    },
+    {
+      "id": "level3-secondary",
+      "name": "Level3 Secondary",
+      "ip": "4.2.2.2",
+      "provider": "Level3",
+      "enabled": false,
+      "isPrimary": false
+    }
+  ]
+}
