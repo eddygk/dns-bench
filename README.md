@@ -1,317 +1,342 @@
-# DNS Bench Linux
+# DNS Bench Web
 
-A comprehensive DNS benchmarking tool for Linux that mimics Steve Gibson's DNS Bench functionality. Automatically detects your current DNS servers and benchmarks their performance against popular public DNS servers.
+A modern web-based DNS benchmarking application that tests and compares DNS server performance. Features a React frontend with real-time updates and comprehensive performance analytics.
 
-![DNS Bench Linux Demo](https://img.shields.io/badge/Platform-Linux-blue) ![Python](https://img.shields.io/badge/Python-3.6+-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
+![DNS Bench Web](https://img.shields.io/badge/Platform-Linux-blue) ![React](https://img.shields.io/badge/React-18-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue) ![Docker](https://img.shields.io/badge/Docker-Ready-green)
 
 ## 🎯 Features
 
-- **🔍 Automatic DNS Detection** - Detects current DNS servers from multiple sources (resolv.conf, systemd-resolved, NetworkManager)
-- **⚡ Performance Benchmarking** - Tests response times across 24 diverse domains
-- **🌐 Public DNS Comparison** - Includes 10 popular public DNS servers (Cloudflare, Google, Quad9, etc.)
-- **🎯 Quick Testing** - New `--top3` option for fast comparison against top providers
-- **📊 Statistical Analysis** - Provides avg, min, max, median response times and success rates
-- **🔧 Flexible Options** - Test current, public, or custom DNS servers
-- **📈 Performance Insights** - Get optimization recommendations
-- **🛡️ Input Validation** - Robust IPv4/IPv6 address validation and duplicate filtering
+- **🌐 Web-Based Interface** - Modern React UI with shadcn/ui components
+- **⚙️ Manual DNS Configuration** - Configure your local DNS servers through the dashboard (with auto-detection fallback)
+- **⚡ Performance Benchmarking** - Tests response times across 20 diverse domains
+- **🌍 Public DNS Comparison** - Compare against 10 popular public DNS providers
+- **📊 Real-Time Updates** - Live progress tracking via Socket.IO during benchmarks
+- **📈 Statistical Analysis** - Avg, min, max, median response times and success rates
+- **💾 History Tracking** - SQLite database stores benchmark results
+- **🐳 Docker Ready** - Multi-container orchestration for easy deployment
+- **🔒 Security First** - Rate limiting, CORS configuration, input validation
 
 ## 🚀 Quick Start
 
-### Installation
+### Docker Deployment (Recommended)
 
 ```bash
-# Download and run the installer
-curl -o install_dns_bench.sh https://raw.githubusercontent.com/your-repo/dns-bench-linux/main/install_dns_bench.sh
-chmod +x install_dns_bench.sh
-sudo ./install_dns_bench.sh
+# Clone the repository
+git clone https://github.com/eddygk/dns-bench.git
+cd dns-bench
+
+# Start the application
+make dev
+
+# Or using docker-compose directly
+docker-compose up -d
 ```
 
-Or manually:
-```bash
-# Install dependencies
-sudo apt-get install dnsutils python3
+Access the application at:
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001/api/health
 
-# Install the tool
-sudo cp dns_bench_linux.py /usr/local/bin/dns-bench
-sudo chmod +x /usr/local/bin/dns-bench
-```
-
-### Basic Usage
-
-```bash
-# Quick comparison (recommended)
-dns-bench --top3
-
-# Full benchmark against all public DNS servers
-dns-bench
-
-# Test only your current DNS configuration
-dns-bench --current-only
-
-# Verbose output with detailed timing
-dns-bench --verbose
-```
-
-## 📊 Sample Output
-
-```
-=== DNS Benchmark Tool ===
-
-Current DNS servers detected:
-  1. 192.168.1.1
-  2. 8.8.8.8
-
-Testing 5 DNS servers with 24 domains...
-Progress: ..... Done!
-
-===============================================================================
-DNS BENCHMARK RESULTS
-===============================================================================
-#  DNS Server               Success  Avg      Min      Max      Median   
--------------------------------------------------------------------------------
-1  Cloudflare               100.0%   8.2ms    5.1ms    15.3ms   7.8ms
-2  Google                   100.0%   12.4ms   8.2ms    22.1ms   11.9ms
-3  Current-192.168.1.1      98.8%    15.6ms   9.4ms    45.2ms   14.1ms
-4  Quad9                    100.0%   18.9ms   12.3ms   28.7ms   17.2ms
-5  Current-8.8.8.8          100.0%   12.4ms   8.2ms    22.1ms   11.9ms
-
-🏆 Best performing DNS server:
-   Cloudflare (1.1.1.1)
-   Average: 8.2ms, Success: 100.0%
-
-💡 Your current DNS ranks #3
-   Switching to Cloudflare could improve speed by 47.4%
-```
-
-## 🛠️ Usage Options
-
-### Command Line Arguments
-
-| Option | Description |
-|--------|-------------|
-| `--top3` | Test current DNS + top 3 public DNS (Cloudflare, Google, Quad9) |
-| `--current-only` | Test only currently configured DNS servers |
-| `--custom SERVER [SERVER ...]` | Test custom DNS servers |
-| `--verbose, -v` | Show detailed query results for each domain |
-| `--json` | Output results in JSON format |
-| `--help` | Show help message and examples |
-
-### Examples
+### Manual Installation
 
 ```bash
-# Quick comparison against top 3 public DNS providers
-dns-bench --top3
+# Install dependencies for frontend
+cd web-app/client
+npm install
 
-# Test only your current DNS setup
-dns-bench --current-only
+# Install dependencies for backend
+cd ../server
+npm install
 
-# Test specific DNS servers
-dns-bench --custom 1.1.1.1 8.8.8.8 9.9.9.9
-
-# Full benchmark with detailed output
-dns-bench --verbose
-
-# Get results in JSON format for scripting
-dns-bench --json > dns_results.json
+# Start both services
+npm run dev  # In both directories
 ```
 
-## 🔍 How It Works
+## 📊 Web Interface
 
-### DNS Server Detection
+### Dashboard
+- View current DNS configuration
+- Quick access to benchmark and settings
+- Real-time system status
 
-The tool automatically detects your current DNS servers from multiple sources:
+### DNS Configuration
+Navigate to **Settings** to configure your local DNS servers:
+1. Enter Primary DNS Server IP
+2. Enter Secondary DNS Server IP (optional)
+3. Click **Save Settings**
+4. Your configured DNS will be used in benchmarks
 
-1. **`/etc/resolv.conf`** - Standard DNS configuration file
-2. **systemd-resolved** - Modern Linux DNS resolver (`systemd-resolve` / `resolvectl`)
-3. **NetworkManager** - Network configuration manager (`nmcli`)
+**Note**: If no DNS servers are configured, the system will attempt auto-detection from:
+- `/etc/resolv.conf`
+- systemd-resolved
+- NetworkManager
 
-Works with both **static** and **DHCP** DNS configurations.
+### Benchmark Page
+- Start comprehensive DNS tests
+- Real-time progress updates via Socket.IO
+- Live activity log showing current tests
+- Detailed results with performance charts
 
-### Test Methodology
+### Results Analysis
+- Performance comparison charts (using Recharts)
+- Statistical breakdown per DNS server
+- Success rate analysis
+- Domain-specific performance metrics
 
-- **24 diverse test domains** including popular sites, international domains, and cache-miss scenarios
-- **Concurrent queries** with configurable timeout (default: 2 seconds)
-- **Statistical analysis** with outlier handling
-- **Success rate tracking** for reliability assessment
+### History
+- Browse past benchmark results
+- Compare performance over time
+- Filter and search capabilities
+- Export results for analysis
 
-### Included Public DNS Servers
+## 🛠️ Architecture
+
+```
+dns-bench/
+├── web-app/
+│   ├── client/          # React frontend
+│   │   ├── src/
+│   │   │   ├── pages/   # Dashboard, Benchmark, Settings, Results, History
+│   │   │   ├── components/  # shadcn/ui components
+│   │   │   └── lib/     # API client, utilities
+│   │   └── Dockerfile
+│   │
+│   ├── server/          # Express backend
+│   │   ├── src/
+│   │   │   ├── services/  # DNS testing, settings, database
+│   │   │   └── index.ts  # Socket.IO server & API routes
+│   │   └── Dockerfile
+│   │
+│   └── shared/          # Shared TypeScript types
+│
+├── docker-compose.yml   # Container orchestration
+└── Makefile            # Development commands
+```
+
+## 🔧 Configuration
+
+### Local DNS Settings
+
+The application uses **manual DNS configuration** as the primary method:
+
+1. Navigate to **Settings** in the web interface
+2. Enter your local DNS server IPs:
+   - Primary DNS (e.g., 10.10.20.30)
+   - Secondary DNS (e.g., 10.10.20.31)
+3. Click **Save Settings**
+4. Run benchmarks to compare against public DNS
+
+Configuration is stored in `local-dns.json` on the server.
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/dns/current` | GET | Get current DNS servers (configured or auto-detected) |
+| `/api/settings/local-dns` | GET | Get local DNS configuration |
+| `/api/settings/local-dns` | PUT | Update local DNS servers |
+| `/api/benchmark/start` | POST | Start DNS benchmark |
+| `/api/results` | GET | Get all benchmark results |
+| `/api/results/:testId` | GET | Get specific test results |
+| `/api/settings/cors` | GET/PUT | CORS configuration |
+
+### Socket.IO Events
+
+Real-time updates during benchmarking:
+- `benchmark:progress` - Current test progress and server being tested
+- `benchmark:complete` - Final results
+- `benchmark:error` - Error notifications
+- `benchmark:domain` - Individual domain test results
+
+## 🌐 Tested DNS Providers
 
 | Provider | Primary | Secondary | Features |
 |----------|---------|-----------|----------|
+| **Your Local DNS** | User configured | User configured | LAN/ISP servers |
 | **Cloudflare** | 1.1.1.1 | 1.0.0.1 | Fast, privacy-focused |
 | **Google** | 8.8.8.8 | 8.8.4.4 | Reliable, widely used |
-| **Quad9** | 9.9.9.9 | 149.112.112.112 | Security-focused, malware blocking |
-| **OpenDNS** | 208.67.222.222 | 208.67.220.220 | Content filtering options |
+| **Quad9** | 9.9.9.9 | 149.112.112.112 | Security, malware blocking |
+| **OpenDNS** | 208.67.222.222 | 208.67.220.220 | Content filtering |
 | **Level3** | 4.2.2.1 | 4.2.2.2 | ISP-grade reliability |
 
 ## 📋 Requirements
 
-- **Linux** (Ubuntu, Debian, CentOS, Fedora, Arch, etc.)
-- **Python 3.6+** (usually pre-installed)
-- **dnsutils** package (`dig` command)
-  ```bash
-  # Ubuntu/Debian
-  sudo apt-get install dnsutils
-  
-  # CentOS/RHEL
-  sudo yum install bind-utils
-  
-  # Fedora
-  sudo dnf install bind-utils
-  
-  # Arch Linux
-  sudo pacman -S bind-tools
-  ```
+### For Docker Deployment
+- Docker 20.10+
+- Docker Compose 2.0+
+- 1GB free RAM
+- Ports 3000, 3001, and 6379 available
 
-## 🔧 Advanced Usage
+### For Manual Installation
+- Node.js 18+ with npm
+- Linux with `dig` command (bind-tools/dnsutils)
+- SQLite3
+- Redis (optional, for caching)
 
-### Configuration Detection
+## 🔄 Development
 
-The tool can detect DNS servers from various network configurations:
-
-- **Static IP configurations** (netplan, /etc/network/interfaces)
-- **DHCP configurations** (automatic DNS assignment)
-- **NetworkManager profiles** (desktop environments)
-- **systemd-resolved configurations** (modern Linux systems)
-
-### Filtering and Validation
-
-- **Automatic deduplication** of DNS servers from multiple sources
-- **IPv4/IPv6 validation** with regex pattern matching
-- **Localhost filtering** (excludes 127.x.x.x addresses)
-- **Invalid input rejection** with helpful error messages
-
-### Output Formats
+### Start Development Environment
 
 ```bash
-# Human-readable table (default)
-dns-bench
+# Using Make
+make dev       # Start all services
+make logs      # View logs
+make clean     # Stop and clean
+make build     # Rebuild containers
 
-# JSON for scripting/automation
-dns-bench --json
+# Manual commands
+docker-compose up -d
+docker logs -f dns-bench-client-1
+docker logs -f dns-bench-server-1
+```
 
-# Verbose with per-domain timing
-dns-bench --verbose
+### Technology Stack
+
+- **Frontend**:
+  - React 18 + TypeScript
+  - Vite for build tooling
+  - Tailwind CSS + shadcn/ui for UI
+  - Socket.IO client for real-time updates
+  - Zustand for state management
+  - React Query for data fetching
+  - Recharts for data visualization
+
+- **Backend**:
+  - Express.js + TypeScript
+  - Socket.IO for WebSocket connections
+  - SQLite for data persistence
+  - Pino for logging
+  - DNS testing via `dig` command
+
+- **Infrastructure**:
+  - Docker multi-container setup
+  - Redis for caching
+  - Environment-based configuration
+
+### Environment Variables
+
+```bash
+# Frontend (.env)
+VITE_API_URL=http://localhost:3001
+VITE_WS_URL=ws://localhost:3001
+
+# Backend (.env)
+PORT=3001
+NODE_ENV=development
+DB_PATH=/app/data/dns-bench.db
+CORS_ORIGIN=http://localhost:3000
+HOST_IP=<your-lan-ip>  # For LAN access
 ```
 
 ## 🐛 Troubleshooting
 
+### Container Issues
+
+```bash
+# Rebuild containers
+make build
+
+# Check container status
+docker ps
+
+# View specific logs
+docker logs dns-bench-server-1
+docker logs dns-bench-client-1
+```
+
+### Network Access
+
+If accessing from another device on your network:
+1. Set `HOST_IP` in `.env` to your machine's LAN IP
+2. Check Settings page for LAN access URLs
+3. Ensure firewall allows ports 3000 and 3001
+4. Access via `http://<host-ip>:3000`
+
+### DNS Testing Issues
+
+- Ensure `dig` command is available in backend container
+- Check network connectivity: `docker exec dns-bench-server-1 ping 8.8.8.8`
+- Verify DNS server IPs in Settings are correct
+- Review backend logs: `docker logs dns-bench-server-1`
+
 ### Common Issues
 
-**"dig command not found"**
-```bash
-sudo apt-get install dnsutils
-```
+**"Could not detect DNS servers"**
+- Configure DNS servers manually in Settings
+- Check if running in Docker (may not have access to host DNS)
+- Verify network permissions
 
-**"Could not detect current DNS servers"**
-- Check if you're using localhost DNS (127.x.x.x)
-- Try `--verbose` for detailed error information
-- Manually specify servers with `--custom`
-
-**Permission errors**
-```bash
-# Run with sudo if accessing network configs fails
-sudo dns-bench
-```
-
-**Slow performance**
-- Some DNS servers may have high latency
-- Use `--current-only` to test only local servers
-- Check your internet connection
-
-### Debug Mode
-
-```bash
-# Show detailed detection and query information
-dns-bench --verbose
-
-# Test DNS detection only
-python3 -c "
-from dns_bench_linux import DNSBenchmark
-benchmark = DNSBenchmark(verbose=True)
-servers = benchmark.get_current_dns_servers()
-print('Detected servers:', servers)
-"
-```
-
-## 🔄 Updating
-
-To update to the latest version:
-
-```bash
-# Using the update script
-./update_dns_bench.sh
-
-# Or manually
-sudo cp dns_bench_linux.py /usr/local/bin/dns-bench
-sudo chmod +x /usr/local/bin/dns-bench
-```
+**Real-time updates not working**
+- Check WebSocket connection in browser console
+- Ensure Socket.IO is connecting to correct URL
+- Verify CORS settings allow your origin
 
 ## 📈 Performance Tips
 
-### Optimization Recommendations
+1. **Configure local DNS first** - Set your actual LAN DNS servers in Settings
+2. **Run multiple tests** - Performance varies by time of day and network load
+3. **Compare results** - Look for consistency across multiple test runs
+4. **Consider latency** - Geographically closer servers typically perform better
+5. **Check success rates** - Reliability is as important as speed
 
-1. **Use the fastest DNS server** from your benchmark results
-2. **Consider geographic proximity** - closer servers are often faster
-3. **Test at different times** - performance can vary by time of day
-4. **Check multiple providers** - some excel at different domain types
-5. **Consider security features** - Quad9 blocks malware, OpenDNS offers filtering
+## 🔄 Updating
 
-### DNS Configuration
-
-**Ubuntu/Debian with netplan:**
-```yaml
-# /etc/netplan/01-network-manager-all.yaml
-network:
-  version: 2
-  ethernets:
-    eth0:
-      dhcp4: true
-      nameservers:
-        addresses: [1.1.1.1, 8.8.8.8]
-```
-
-**systemd-resolved:**
 ```bash
-# Edit /etc/systemd/resolved.conf
-DNS=1.1.1.1 8.8.8.8
-sudo systemctl restart systemd-resolved
+# Pull latest changes
+git pull origin main
+
+# Rebuild containers
+make build
+
+# Restart services
+make dev
 ```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions welcome! Areas for improvement:
 
-### Development Setup
+- [ ] Enhanced result visualization with more chart types
+- [ ] Add more DNS providers (Comodo, Norton, etc.)
+- [ ] Implement result export (CSV/JSON)
+- [ ] Add scheduling for automated tests
+- [ ] Improve mobile responsive design
+- [ ] Add DNS-over-HTTPS (DoH) testing
+- [ ] Implement DNS-over-TLS (DoT) support
+- [ ] Add latency heatmaps
+- [ ] Create REST API documentation
+
+## Legacy CLI Tool
+
+The original Python-based CLI tool (`dns_bench_linux.py`) is still included for command-line usage:
 
 ```bash
-git clone https://github.com/your-repo/dns-bench-linux.git
-cd dns-bench-linux
-python3 dns_bench_linux.py --help
+# Install
+sudo cp dns_bench_linux.py /usr/local/bin/dns-bench
+sudo chmod +x /usr/local/bin/dns-bench
+
+# Run
+dns-bench --top3  # Quick test against top 3 DNS providers
+dns-bench --verbose  # Full test with detailed output
 ```
-
-### Adding Features
-
-- **New DNS providers** - Add to `public_dns_servers` dictionary
-- **Test domains** - Extend `test_domains` list
-- **Output formats** - Modify `print_results()` method
-- **Detection methods** - Enhance `get_current_dns_servers()`
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - See [LICENSE](LICENSE) file for details
 
 ## 🙏 Acknowledgments
 
 - Inspired by [Steve Gibson's DNS Bench](https://www.grc.com/dns/benchmark.htm)
-- Thanks to all public DNS providers for their free services
-- Built with Python's excellent networking and subprocess libraries
+- Built with [shadcn/ui](https://ui.shadcn.com/) components
+- Uses Docker for containerization
+- React + TypeScript for modern web development
+- Socket.IO for real-time communications
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-repo/dns-bench-linux/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-repo/dns-bench-linux/discussions)
+- **Issues**: [GitHub Issues](https://github.com/eddygk/dns-bench/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/eddygk/dns-bench/discussions)
 
 ---
 
-**⚡ Quick Start:** `dns-bench --top3` for instant DNS performance insights!
+**⚡ Quick Start:** `make dev` to launch the web application!
