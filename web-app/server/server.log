@@ -1,0 +1,129 @@
+
+> @dns-bench/server@1.0.0 dev
+> tsx watch src/index.ts
+
+[2025-09-16 11:53:17.259 -0400] [32mINFO[39m (188301): [36mDNS Bench server started[39m
+    port: 3001
+[2025-09-16 11:53:46.286 -0400] [32mINFO[39m (188301): [36mBenchmark started[39m
+    testId: "4f4eef24-4ede-4d5a-b2ed-d13dd1305a46"
+    servers: 4
+[2025-09-16 11:53:58.555 -0400] [31mERROR[39m (188301): [36mFailed to save test results to database[39m
+    testId: "4f4eef24-4ede-4d5a-b2ed-d13dd1305a46"
+    error: {}
+[2025-09-16 11:53:58.555 -0400] [32mINFO[39m (188301): [36mBenchmark completed[39m
+    testId: "4f4eef24-4ede-4d5a-b2ed-d13dd1305a46"
+    duration: 12266
+11:56:04 AM [tsx] change in ./src/index.ts Restarting...
+[2025-09-16 11:56:04.932 -0400] [32mINFO[39m (188301): [36mReceived SIGTERM, shutting down gracefully[39m
+[2025-09-16 11:56:04.932 -0400] [32mINFO[39m (188301): [36mServer closed[39m
+c[2025-09-16 11:56:06.349 -0400] [32mINFO[39m (189493): [36mDNS Bench server started[39m
+    port: 3001
+[2025-09-16 11:58:54.162 -0400] [32mINFO[39m (189493): [36mBenchmark started[39m
+    testId: "1b227563-9fae-4538-8569-80dffc97cac9"
+    servers: 3
+[2025-09-16 11:59:02.385 -0400] [31mERROR[39m (189493): [36mFailed to save test results to database[39m
+    testId: "1b227563-9fae-4538-8569-80dffc97cac9"
+    error: {}
+[2025-09-16 11:59:02.385 -0400] [32mINFO[39m (189493): [36mBenchmark completed[39m
+    testId: "1b227563-9fae-4538-8569-80dffc97cac9"
+    duration: 8153
+12:02:08 PM [tsx] change in ./src/services/dns-benchmark.ts Restarting...
+[2025-09-16 12:02:08.764 -0400] [32mINFO[39m (189493): [36mReceived SIGTERM, shutting down gracefully[39m
+[2025-09-16 12:02:08.764 -0400] [32mINFO[39m (189493): [36mServer closed[39m
+c[2025-09-16 12:02:09.363 -0400] [32mINFO[39m (190353): [36mDNS Bench server started[39m
+    port: 3001
+[2025-09-16 12:02:23.662 -0400] [32mINFO[39m (190353): [36mBenchmark started[39m
+    testId: "fffee6b4-03c8-4bee-aad5-e3847ef41458"
+    servers: 3
+[2025-09-16 12:02:35.898 -0400] [31mERROR[39m (190353): [36mFailed to save test results to database[39m
+    testId: "fffee6b4-03c8-4bee-aad5-e3847ef41458"
+    error: {}
+[2025-09-16 12:02:35.898 -0400] [32mINFO[39m (190353): [36mBenchmark completed[39m
+    testId: "fffee6b4-03c8-4bee-aad5-e3847ef41458"
+    duration: 12170
+[2025-09-16 12:29:34.471 -0400] [33mWARN[39m (190353): [36mCORS blocked origin[39m
+    origin: "http://10.10.20.107:3002"
+    corsSettings: {
+      "allowIPAccess": true,
+      "allowHostnameAccess": true,
+      "customOrigins": []
+    }
+[2025-09-16 12:29:34.471 -0400] [31mERROR[39m (190353): [36mUnhandled error[39m
+    url: "/api/settings/local-dns"
+    method: "OPTIONS"
+    error: {}
+[2025-09-16 12:29:34.473 -0400] [33mWARN[39m (190353): [36mCORS blocked origin[39m
+    origin: "http://10.10.20.107:3002"
+    corsSettings: {
+      "allowIPAccess": true,
+      "allowHostnameAccess": true,
+      "customOrigins": []
+    }
+[2025-09-16 12:29:34.474 -0400] [31mERROR[39m (190353): [36mUnhandled error[39m
+    url: "/api/settings/local-dns"
+    method: "OPTIONS"
+    error: {}
+[2025-09-16 12:29:42.140 -0400] [33mWARN[39m (190353): [36mCORS blocked origin[39m
+    origin: "http://10.10.20.107:3002"
+    corsSettings: {
+      "allowIPAccess": true,
+      "allowHostnameAccess": true,
+      "customOrigins": []
+    }
+[2025-09-16 12:29:42.140 -0400] [31mERROR[39m (190353): [36mUnhandled error[39m
+    url: "/api/results/fffee6b4-03c8-4bee-aad5-e3847ef41458/export?format=json"
+    method: "OPTIONS"
+    error: {}
+[2025-09-16 12:29:42.142 -0400] [33mWARN[39m (190353): [36mCORS blocked origin[39m
+    origin: "http://10.10.20.107:3002"
+    corsSettings: {
+      "allowIPAccess": true,
+      "allowHostnameAccess": true,
+      "customOrigins": []
+    }
+[2025-09-16 12:29:42.142 -0400] [31mERROR[39m (190353): [36mUnhandled error[39m
+    url: "/api/results/fffee6b4-03c8-4bee-aad5-e3847ef41458/export?format=json"
+    method: "OPTIONS"
+    error: {}
+[2025-09-16 12:34:28.576 -0400] [32mINFO[39m (190353): [36mServer info - Host IP detection[39m
+    hostIP: null
+    env: {}
+[2025-09-16 12:34:28.610 -0400] [32mINFO[39m (190353): [36mServer info - Host IP detection[39m
+    hostIP: null
+    env: {}
+[2025-09-16 12:34:36.117 -0400] [32mINFO[39m (190353): [36mServer info - Host IP detection[39m
+    hostIP: null
+    env: {}
+[2025-09-16 12:34:36.147 -0400] [32mINFO[39m (190353): [36mServer info - Host IP detection[39m
+    hostIP: null
+    env: {}
+[2025-09-16 12:35:52.969 -0400] [32mINFO[39m (190353): [36mBenchmark started[39m
+    testId: "d67138b5-008b-4761-b6f5-acf796e314f1"
+    servers: 6
+[2025-09-16 12:35:52.980 -0400] [32mINFO[39m (190353): [36mClient connected[39m
+    socketId: "Ie5pSl0uxdauyyaRAAAB"
+[2025-09-16 12:36:05.378 -0400] [31mERROR[39m (190353): [36mFailed to save test results to database[39m
+    testId: "d67138b5-008b-4761-b6f5-acf796e314f1"
+    error: {}
+[2025-09-16 12:36:05.378 -0400] [32mINFO[39m (190353): [36mBenchmark completed[39m
+    testId: "d67138b5-008b-4761-b6f5-acf796e314f1"
+    duration: 12310
+[2025-09-16 12:36:05.384 -0400] [32mINFO[39m (190353): [36mClient disconnected[39m
+    socketId: "Ie5pSl0uxdauyyaRAAAB"
+[2025-09-16 12:36:41.297 -0400] [32mINFO[39m (190353): [36mTest result deleted[39m
+    testId: "fffee6b4-03c8-4bee-aad5-e3847ef41458"
+[2025-09-16 12:36:43.868 -0400] [32mINFO[39m (190353): [36mTest result deleted[39m
+    testId: "1b227563-9fae-4538-8569-80dffc97cac9"
+[2025-09-16 12:36:49.308 -0400] [32mINFO[39m (190353): [36mBenchmark started[39m
+    testId: "201335a8-7afd-40c5-b1ac-7d8ce87a5fd2"
+    servers: 6
+[2025-09-16 12:36:49.314 -0400] [32mINFO[39m (190353): [36mClient connected[39m
+    socketId: "WIBJrrYjxrmk2nMoAAAD"
+[2025-09-16 12:36:53.346 -0400] [31mERROR[39m (190353): [36mFailed to save test results to database[39m
+    testId: "201335a8-7afd-40c5-b1ac-7d8ce87a5fd2"
+    error: {}
+[2025-09-16 12:36:53.346 -0400] [32mINFO[39m (190353): [36mBenchmark completed[39m
+    testId: "201335a8-7afd-40c5-b1ac-7d8ce87a5fd2"
+    duration: 3938
+[2025-09-16 12:36:53.422 -0400] [32mINFO[39m (190353): [36mClient disconnected[39m
+    socketId: "WIBJrrYjxrmk2nMoAAAD"

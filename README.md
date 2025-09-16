@@ -11,7 +11,8 @@ A modern web-based DNS benchmarking application that tests and compares DNS serv
 - **⚡ Performance Benchmarking** - Tests response times across 20 diverse domains
 - **🌍 Public DNS Comparison** - Compare against 10 popular public DNS providers
 - **📊 Real-Time Updates** - Live progress tracking via Socket.IO during benchmarks
-- **📈 Statistical Analysis** - Avg, min, max, median response times and success rates
+- **📈 Enhanced Failure Diagnostics** - Tabbed interface with repeat offender detection and detailed error analysis
+- **📋 Statistical Analysis** - Avg, min, max, median response times and success rates
 - **💾 History Tracking** - SQLite database stores benchmark results
 - **🐳 Docker Ready** - Multi-container orchestration for easy deployment
 - **🔒 Security First** - Rate limiting, CORS configuration, input validation
@@ -76,11 +77,14 @@ Navigate to **Settings** to configure your local DNS servers:
 - Live activity log showing current tests
 - Detailed results with performance charts
 
-### Results Analysis
-- Performance comparison charts (using Recharts)
-- Statistical breakdown per DNS server
-- Success rate analysis
-- Domain-specific performance metrics
+### Enhanced Results Analysis
+- **Tabbed Interface**: Overview, Failures, Server Analysis, Raw Diagnostics
+- **Performance comparison charts** (using Recharts)
+- **Failure diagnostics**: Repeat offender detection and detailed error analysis
+- **Server breakdown**: Per-server failure analysis showing problematic DNS servers
+- **Smart recommendations**: Actionable insights based on performance data
+- **Raw diagnostics**: Technical DNS query output for troubleshooting
+- **Statistical breakdown** per DNS server with success rates
 
 ### History
 - Browse past benchmark results
@@ -296,9 +300,10 @@ make dev
 
 Contributions welcome! Areas for improvement:
 
-- [ ] Enhanced result visualization with more chart types
+- [x] ~~Enhanced result visualization with more chart types~~ ✅ **COMPLETED**
+- [x] ~~Implement result export (CSV/JSON)~~ ✅ **COMPLETED**
+- [x] ~~Enhanced failure diagnostics and analysis~~ ✅ **COMPLETED**
 - [ ] Add more DNS providers (Comodo, Norton, etc.)
-- [ ] Implement result export (CSV/JSON)
 - [ ] Add scheduling for automated tests
 - [ ] Improve mobile responsive design
 - [ ] Add DNS-over-HTTPS (DoH) testing

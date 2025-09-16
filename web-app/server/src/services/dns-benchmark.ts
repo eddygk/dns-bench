@@ -346,7 +346,7 @@ export class DNSBenchmarkService {
           await this.dbService.saveDomainResults(testId, domainResults)
 
           // Analyze failures and save analysis
-          const failureAnalysisResults = await this.analyzeFailurePatterns(results)
+          const failureAnalysisResults = await this.analyzeFailurePatterns(results, domains)
           const failureAnalysis = failureAnalysisResults.consistentFailures.map(failure => ({
             domain: failure.domain,
             consistentFailure: true,

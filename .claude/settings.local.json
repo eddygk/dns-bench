@@ -6,7 +6,16 @@
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_wait_for",
-      "mcp__playwright__browser_take_screenshot"
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__context7__resolve-library-id",
+      "Read(//tmp/perplexity-mcp/**)",
+      "Read(//tmp/**)",
+      "mcp__perplexity-mcp__perplexity_reason",
+      "Read(///**)",
+      "Bash(awk:*)",
+      "mcp__playwright__browser_snapshot",
+      "Bash(lsof:*)",
+      "mcp__playwright__browser_network_requests"
     ],
     "deny": [],
     "ask": []

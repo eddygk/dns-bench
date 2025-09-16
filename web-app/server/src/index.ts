@@ -30,7 +30,7 @@ const logger = pino({
 })
 
 // Initialize services
-const dbService = new DatabaseService()
+const dbService = new DatabaseService('./dns-bench.db') // Use persistent database
 const settingsService = new SettingsService(logger)
 const dnsService = new DNSBenchmarkService(logger, settingsService, dbService)
 
@@ -92,7 +92,7 @@ app.use('/api/', limiter)
 const startBenchmarkSchema = z.object({
   servers: z.array(z.string().ip()).min(1).max(20),
   testType: z.enum(['quick', 'full', 'custom']),
-  domains: z.array(z.string().url()).optional(),
+  domains: z.array(z.string().min(1).max(255)).optional(), // Domain names, not URLs
   options: z.object({
     timeout: z.number().min(1000).max(10000).optional(),
     retries: z.number().min(0).max(3).optional(),

@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Download, Clock, CheckCircle, Award, Loader2 } from 'lucide-react'
+import { Download, Clock, CheckCircle, Award, Loader2, AlertTriangle, ChevronDown, ChevronUp, Eye, Activity, Server, Globe } from 'lucide-react'
 import { apiRequest } from '@/lib/api'
 
 interface BenchmarkResult {
@@ -66,6 +68,8 @@ export function ResultsPage() {
   const [failureAnalysis, setFailureAnalysis] = useState<FailureAnalysis[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [expandedFailures, setExpandedFailures] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -166,6 +170,82 @@ export function ResultsPage() {
   const successfulQueries = results.results.reduce((sum, r) => sum + r.successfulQueries, 0)
   const overallSuccessRate = totalQueries > 0 ? (successfulQueries / totalQueries) * 100 : 0
 
+  // Enhanced analytics
+  const failedDomains = domainResults.filter(r => !r.success)
+  const uniqueFailedDomains = [...new Set(failedDomains.map(r => r.domain))]
+  const repeatOffenders = getRepeatOffenders(domainResults)
+  const serverFailureMap = getServerFailureBreakdown(domainResults)
+  const errorTypeBreakdown = getErrorTypeBreakdown(failedDomains)
+
+  function getRepeatOffenders(results: DomainResult[]) {
+    const domainFailureCounts = results.reduce<Record<string, { count: number; servers: string[]; errors: string[] }>>((acc, result) => {
+      if (!result.success) {
+        if (!acc[result.domain]) {
+          acc[result.domain] = { count: 0, servers: [], errors: [] }
+        }
+        acc[result.domain].count++
+        if (!acc[result.domain].servers.includes(result.serverIp)) {
+          acc[result.domain].servers.push(result.serverIp)
+        }
+        if (result.errorType && !acc[result.domain].errors.includes(result.errorType)) {
+          acc[result.domain].errors.push(result.errorType)
+        }
+      }
+      return acc
+    }, {})
+
+    return Object.entries(domainFailureCounts)
+      .filter(([_, data]) => data.count >= 2)
+      .sort(([_, a], [__, b]) => b.count - a.count)
+      .map(([domain, data]) => ({ domain, ...data }))
+  }
+
+  function getServerFailureBreakdown(results: DomainResult[]) {
+    const serverBreakdown = results.reduce<Record<string, { total: number; failed: number; failedDomains: string[] }>>((acc, result) => {
+      if (!acc[result.serverIp]) {
+        acc[result.serverIp] = { total: 0, failed: 0, failedDomains: [] }
+      }
+      acc[result.serverIp].total++
+      if (!result.success) {
+        acc[result.serverIp].failed++
+        if (!acc[result.serverIp].failedDomains.includes(result.domain)) {
+          acc[result.serverIp].failedDomains.push(result.domain)
+        }
+      }
+      return acc
+    }, {})
+
+    return Object.entries(serverBreakdown)
+      .map(([server, data]) => ({
+        server,
+        ...data,
+        failureRate: ((data.failed / data.total) * 100).toFixed(1)
+      }))
+      .sort((a, b) => b.failed - a.failed)
+  }
+
+  function getErrorTypeBreakdown(failedResults: DomainResult[]) {
+    const errorCounts = failedResults.reduce<Record<string, number>>((acc, result) => {
+      const errorType = result.errorType || result.errorMessage || 'Unknown Error'
+      acc[errorType] = (acc[errorType] || 0) + 1
+      return acc
+    }, {})
+
+    return Object.entries(errorCounts)
+      .sort(([_, a], [__, b]) => b - a)
+      .map(([error, count]) => ({ error, count }))
+  }
+
+  const toggleFailureExpansion = (domain: string) => {
+    const newExpanded = new Set(expandedFailures)
+    if (newExpanded.has(domain)) {
+      newExpanded.delete(domain)
+    } else {
+      newExpanded.add(domain)
+    }
+    setExpandedFailures(newExpanded)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -188,8 +268,8 @@ export function ResultsPage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Enhanced Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Winner</CardTitle>
@@ -228,9 +308,44 @@ export function ResultsPage() {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Failed Domains</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{uniqueFailedDomains.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {repeatOffenders.length} repeat offenders
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Performance Chart */}
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center space-x-2">
+            <Activity className="h-4 w-4" />
+            <span>Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="failures" className="flex items-center space-x-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span>Failures ({uniqueFailedDomains.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="servers" className="flex items-center space-x-2">
+            <Server className="h-4 w-4" />
+            <span>Server Analysis</span>
+          </TabsTrigger>
+          <TabsTrigger value="diagnostics" className="flex items-center space-x-2">
+            <Eye className="h-4 w-4" />
+            <span>Raw Diagnostics</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          {/* Performance Chart */}
       <Card>
         <CardHeader>
           <CardTitle>Response Time Comparison</CardTitle>
@@ -253,7 +368,7 @@ export function ResultsPage() {
         </CardContent>
       </Card>
 
-      {/* Detailed Results Table */}
+          {/* Detailed Results Table */}
       <Card>
         <CardHeader>
           <CardTitle>Detailed Results</CardTitle>
@@ -300,9 +415,261 @@ export function ResultsPage() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
 
-      {/* Per-Domain Breakdown */}
-      {domainResults.length > 0 && (
+        <TabsContent value="failures" className="space-y-6">
+          {/* Repeat Offenders */}
+          {repeatOffenders.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                  <span>Repeat Offenders</span>
+                  <Badge variant="destructive">{repeatOffenders.length}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Domains that failed 2+ times across different DNS servers - these need attention
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {repeatOffenders.map((offender) => (
+                    <div key={offender.domain} className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-950">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Globe className="h-5 w-5 text-red-600" />
+                          <div>
+                            <h4 className="font-semibold text-red-900 dark:text-red-100">{offender.domain}</h4>
+                            <p className="text-sm text-red-700 dark:text-red-300">
+                              Failed {offender.count} times across {offender.servers.length} servers
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-red-600 dark:text-red-400 space-y-1">
+                            <div>Servers: {offender.servers.map(s => s.slice(-3)).join(', ')}</div>
+                            <div>Errors: {offender.errors.slice(0, 2).join(', ')}{offender.errors.length > 2 ? '...' : ''}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Error Type Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Error Type Analysis</CardTitle>
+              <CardDescription>
+                Breakdown of DNS resolution errors to identify patterns
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {errorTypeBreakdown.map((item) => (
+                  <div key={item.error} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="font-medium">{item.error}</div>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="secondary">{item.count} failures</Badge>
+                      <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div
+                          className="bg-red-500 h-2 rounded-full"
+                          style={{ width: `${(item.count / failedDomains.length) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Failed Domains List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>All Failed Domains</CardTitle>
+              <CardDescription>
+                Complete list of domains that failed DNS resolution with details
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {uniqueFailedDomains.map((domain) => {
+                  const domainFailures = failedDomains.filter(f => f.domain === domain)
+                  const isExpanded = expandedFailures.has(domain)
+                  return (
+                    <Collapsible key={domain}>
+                      <CollapsibleTrigger
+                        className="flex items-center justify-between w-full p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
+                        onClick={() => toggleFailureExpansion(domain)}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Globe className="h-4 w-4 text-gray-500" />
+                          <span className="font-medium">{domain}</span>
+                          <Badge variant="destructive" className="text-xs">
+                            {domainFailures.length} failures
+                          </Badge>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-500">
+                            {isExpanded ? 'Hide' : 'Show'} details
+                          </span>
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="ml-7 space-y-2">
+                          {domainFailures.map((failure, idx) => (
+                            <div key={idx} className="p-2 bg-gray-50 dark:bg-gray-900 rounded border-l-2 border-red-400">
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div><strong>Server:</strong> {failure.serverIp}</div>
+                                <div><strong>Error:</strong> {failure.errorType || 'Unknown'}</div>
+                                <div><strong>Response Code:</strong> {failure.responseCode || 'None'}</div>
+                                <div><strong>Response Time:</strong> {failure.responseTime ? `${failure.responseTime}ms` : 'N/A'}</div>
+                                {failure.ipResult && (
+                                  <div className="col-span-2"><strong>IP Result:</strong> {failure.ipResult}</div>
+                                )}
+                                {failure.errorMessage && (
+                                  <div className="col-span-2"><strong>Error Details:</strong> {failure.errorMessage}</div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="servers" className="space-y-6">
+          {/* Server Failure Analysis */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Server Failure Breakdown</CardTitle>
+              <CardDescription>
+                Per-server analysis showing which DNS servers are most problematic
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {serverFailureMap.map((server) => (
+                  <div key={server.server} className={`p-4 rounded-lg border ${
+                    parseFloat(server.failureRate) > 20 ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800' :
+                    parseFloat(server.failureRate) > 10 ? 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800' :
+                    'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Server className="h-5 w-5" />
+                        <div>
+                          <h4 className="font-semibold">{server.server}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {server.failed}/{server.total} queries failed
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold">{server.failureRate}%</div>
+                        <div className="text-sm text-muted-foreground">
+                          {server.failedDomains.length} domains affected
+                        </div>
+                      </div>
+                    </div>
+                    {server.failedDomains.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-sm font-medium mb-2">Failed Domains:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {server.failedDomains.slice(0, 8).map(domain => (
+                            <Badge key={domain} variant="secondary" className="text-xs">
+                              {domain}
+                            </Badge>
+                          ))}
+                          {server.failedDomains.length > 8 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{server.failedDomains.length - 8} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="diagnostics" className="space-y-6">
+          {/* Raw Diagnostics */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Raw DNS Query Diagnostics</CardTitle>
+              <CardDescription>
+                Detailed technical output for troubleshooting DNS issues
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {failedDomains.slice(0, 20).map((result, idx) => (
+                  <div key={`${result.domain}-${result.serverIp}-${idx}`} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-mono text-sm font-bold">
+                        {result.domain} → {result.serverIp}
+                      </div>
+                      <Badge variant="destructive">FAILED</Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <strong>Error Type:</strong> {result.errorType || 'N/A'}<br/>
+                        <strong>Response Code:</strong> {result.responseCode || 'N/A'}<br/>
+                        <strong>Response Time:</strong> {result.responseTime ? `${result.responseTime}ms` : 'N/A'}<br/>
+                        <strong>Query Time:</strong> {result.queryTime ? `${result.queryTime}ms` : 'N/A'}
+                      </div>
+                      <div>
+                        <strong>Authoritative:</strong> {result.authoritative ? 'Yes' : 'No'}<br/>
+                        <strong>IP Result:</strong> {result.ipResult || 'None'}<br/>
+                        <strong>Timestamp:</strong> {new Date(result.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                    {result.errorMessage && (
+                      <div className="mt-3 pt-3 border-t">
+                        <strong>Error Message:</strong>
+                        <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-x-auto">
+                          {result.errorMessage}
+                        </pre>
+                      </div>
+                    )}
+                    {result.rawOutput && (
+                      <div className="mt-3 pt-3 border-t">
+                        <strong>Raw Output:</strong>
+                        <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-x-auto">
+                          {result.rawOutput}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {failedDomains.length > 20 && (
+                  <div className="text-center p-4 text-muted-foreground">
+                    Showing first 20 of {failedDomains.length} failed queries.
+                    <Button variant="link" onClick={() => handleExport('json')}>Export all data</Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Legacy Per-Domain Breakdown - Now condensed since we have detailed failure tabs */}
+      {domainResults.length > 0 && activeTab === 'overview' && (
         <Card>
           <CardHeader>
             <CardTitle>Per-Domain Analysis</CardTitle>

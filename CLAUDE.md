@@ -64,11 +64,20 @@ This project follows spec-kit methodology for feature development:
 - 🔒 **Security**: Helmet, rate limiting, Docker-native CORS configuration
 - ⚙️ **Settings**: Comprehensive CORS management with real-time status display
 
-### READY FOR DEVELOPMENT
-- 🧪 **Testing Integration**: Connect frontend to backend benchmarking
-- 📊 **Live Charts**: Real-time visualization of DNS test results
-- 📈 **History Views**: Browse and compare past benchmark results
-- ⚙️ **Custom Settings**: User-configurable DNS servers and test options
+### ✅ ENHANCED FAILURE DIAGNOSTICS - COMPLETED
+- ✅ **Tabbed Results Interface**: Overview, Failures, Server Analysis, Raw Diagnostics
+- ✅ **Repeat Offender Detection**: Identifies domains failing 2+ times with detailed tracking
+- ✅ **Server Failure Analysis**: Per-server breakdown showing problematic DNS servers
+- ✅ **Raw Diagnostics**: Technical DNS query output for troubleshooting
+- ✅ **Smart Recommendations**: Actionable insights based on performance data
+- ✅ **Enhanced Visibility**: Transforms buried failure data into intuitive interface
+
+### VERIFIED WORKING FEATURES
+- 🧪 **Testing Integration**: Frontend fully connected to backend benchmarking
+- 📊 **Live Charts**: Real-time visualization of DNS test results working
+- 📈 **History Views**: Browse and compare past benchmark results functional
+- ⚙️ **Custom Settings**: User-configurable DNS servers and test options active
+- 🔍 **Failure Analysis**: Complete visibility into DNS test failures and diagnostics
 
 ## Project Overview
 
@@ -188,3 +197,110 @@ localhost:6379
 - **Real-Time Status Display**: Settings page shows current access configuration with enabled/disabled states
 - **Flexible Custom Origins**: Single interface for adding specific hostnames and URLs
 - **LAN Access**: Clear display of actual URLs clients use: `http://10.10.20.107:3000`
+
+## Port Management & Development Guidelines
+
+### 🚨 CRITICAL: Port Management Protocol
+**ALWAYS follow these steps to prevent port conflicts:**
+
+1. **Before starting development servers:**
+   ```bash
+   # Check what's using the expected ports
+   lsof -i :3000  # Frontend (React/Vite)
+   lsof -i :3001  # Backend (Express API)
+
+   # Kill any stuck processes BEFORE starting new ones
+   pkill -f "vite"      # Kill all Vite processes
+   pkill -f "node.*server"  # Kill any Node servers
+   ```
+
+2. **Standard Port Allocation:**
+   - **Frontend (Vite)**: Port 3000 - `http://localhost:3000`
+   - **Backend (Express)**: Port 3001 - `http://localhost:3001`
+   - **Redis Cache**: Port 6379 - `localhost:6379`
+
+3. **Development Server Startup Protocol:**
+   ```bash
+   # Start in correct order, wait for each to fully start
+   cd /home/ansible/dns-bench/web-app/server && npm run dev  # Start backend first
+   cd /home/ansible/dns-bench/web-app/client && npm run dev  # Then frontend
+   ```
+
+4. **CORS Configuration:**
+   - Backend CORS is configured for port 3000 frontend access
+   - If frontend starts on different port (3002, etc.), CORS will block requests
+   - **Always ensure frontend runs on port 3000 for proper CORS function**
+
+5. **Troubleshooting Port Issues:**
+   ```bash
+   # If ports are occupied, clean restart:
+   pkill -f "vite|node.*server"  # Kill all related processes
+   rm -rf web-app/client/node_modules/.vite  # Clear Vite cache
+   # Then restart servers in order
+   ```
+
+6. **Never Start Multiple Instances:**
+   - Each port should have exactly ONE process
+   - Always check `lsof -i :<port>` before starting servers
+   - Kill existing processes rather than allowing port changes
+
+### 🔧 Permission Issues Prevention:
+```bash
+# Fix node_modules permissions before starting:
+sudo chown -R $USER:$USER web-app/client/node_modules
+sudo chown -R $USER:$USER web-app/server/node_modules
+```
+
+## Docker Disk Space Management
+
+### Disk Space Cleanup Script
+**Location:** `/home/ansible/dns-bench/docker-cleanup.sh`
+
+**Purpose:** Safely clean up unused Docker resources to recover disk space during development
+
+**Usage:**
+```bash
+# Run the cleanup script when disk space is low
+./docker-cleanup.sh
+
+# Check current Docker space usage
+docker system df
+
+# Quick check of overall disk usage
+df -h /
+```
+
+**What it cleans:**
+- ✅ Stopped containers (preserves running containers)
+- ✅ Dangling images (`<none>` tagged images)
+- ✅ Unused networks (preserves default networks)
+- ✅ Unused volumes (dangling volumes)
+- ✅ Docker build cache (all cached layers)
+- ✅ npm cache (`~/.npm`)
+- ✅ apt package cache (`/var/cache/apt`)
+- ✅ VS Code extension cache (`~/.vscode-server/data/CachedExtensionVSIXs`)
+- ✅ Old temporary files (`/tmp` files older than 7 days)
+
+**Safety Features:**
+- ❌ Never touches source code files
+- ❌ Never removes running containers
+- ❌ Never removes images used by active containers
+- ✅ Shows preview of what will be cleaned
+- ✅ Requires user confirmation before cleanup
+- ✅ Colored output with clear progress indicators
+- ✅ Handles Docker dependency conflicts gracefully
+- ✅ Uses safe error handling (continues on partial failures)
+
+**When to use:** Run when experiencing disk space issues, build failures, or after frequent Docker rebuilds. Typically safe to run weekly during active development.
+
+**Major Space Consumers (for reference):**
+- VS Code Server extensions/cache: ~647MB
+- Go runtime (/usr/lib/go-1.18): ~316MB (removable if not needed)
+- Node.js via NVM: ~283MB
+- Development caches (~/.cache): ~155MB
+- Project node_modules: Varies by project
+
+**Additional Space Recovery:**
+- Consider removing unused Go runtime: `sudo rm -rf /usr/lib/go-1.18` (saves 316MB)
+- Clean VS Code entirely if not needed: `rm -rf ~/.vscode-server` (saves 647MB)
+- Remove unused Node versions: `nvm uninstall <version>` (saves ~280MB per version)

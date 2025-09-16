@@ -1,1 +1,6 @@
 dns-bench.code-workspace
+node_modules/
+web-app/node_modules/
+web-app/client/node_modules/
+web-app/server/node_modules/
+data/
