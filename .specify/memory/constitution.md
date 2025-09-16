@@ -1,50 +1,40 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# DNS Bench Web Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. User-First Performance Focus
+Every feature must demonstrably improve DNS performance analysis for users; Performance data must be accurate, real-time, and actionable; No feature ships without validated DNS benchmarking capability
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Real-Time Transparency
+All DNS testing operations must provide live progress updates; Users must see exactly what domains are being tested and why; WebSocket connections ensure sub-100ms update latency
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Cross-Platform Accessibility (NON-NEGOTIABLE)
+Web application must work on desktop, tablet, and mobile; All features accessible via keyboard navigation; Screen reader compatibility required for all components
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Data Accuracy & Validation
+DNS benchmark results must be statistically valid; Multiple measurement rounds required for reliability; Input validation prevents invalid DNS server configurations
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Containerized Development
+All development occurs within Docker containers; No local installation dependencies beyond Docker; Development environment must be reproducible across machines
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Security & Privacy Standards
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+DNS queries must not leak sensitive information; No DNS server credentials stored in browser; All API endpoints require proper input sanitization; WebSocket connections use secure protocols in production
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Performance Requirements
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Benchmark completion time under 30 seconds for standard tests; UI responsiveness under 100ms for all interactions; Memory usage under 256MB during typical operation; Support for 10+ concurrent benchmark sessions
+
+## Technology Constraints
+
+Modern web standards only (ES2022+, CSS Grid/Flexbox); TypeScript required for all frontend and backend code; shadcn/ui components for consistent design system; Docker containers for all services
+
+## Development Workflow
+
+spec-kit methodology drives all feature development; Specifications written before any implementation; All features require acceptance criteria and test cases; Constitution compliance verified in all code reviews
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+Constitution supersedes all coding preferences and technical opinions; Feature requests must align with user-first performance focus; Breaking changes require specification update and approval process; Use CLAUDE.md for runtime development guidance and context7 integration
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2024-09-15 | **Last Amended**: 2024-09-15

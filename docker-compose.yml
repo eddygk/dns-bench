@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  client:
+    build:
+      context: ./web-app
+      dockerfile: client/Dockerfile
+      target: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web-app/client:/app
+      - /app/node_modules
+      - ./web-app/shared:/shared
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3001
+      - VITE_WS_URL=ws://localhost:3001
+    depends_on:
+      - server
+    networks:
+      - dns-bench-network
+
+  server:
+    build:
+      context: ./web-app
+      dockerfile: server/Dockerfile
+      target: development
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./web-app/server:/app
+      - /app/node_modules
+      - ./web-app/shared:/shared
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - CORS_ORIGIN=http://localhost:3000
+      - DB_PATH=/app/data/dns-bench.db
+      - HOST_IP=${HOST_IP:-}
+      - DOCKER_HOST_IP=${HOST_IP:-}
+    networks:
+      - dns-bench-network
+    cap_add:
+      - NET_RAW
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dns-bench-network
+
+  # Production build services
+  client-prod:
+    build:
+      context: ./web-app
+      dockerfile: client/Dockerfile
+      target: production
+    ports:
+      - "80:80"
+    depends_on:
+      - server-prod
+    profiles:
+      - production
+    networks:
+      - dns-bench-network
+
+  server-prod:
+    build:
+      context: ./web-app
+      dockerfile: server/Dockerfile
+      target: production
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_PATH=/app/data/dns-bench.db
+    volumes:
+      - ./data:/app/data
+    profiles:
+      - production
+    networks:
+      - dns-bench-network
+    cap_add:
+      - NET_RAW
+
+volumes:
+  redis_data:
+
+networks:
+  dns-bench-network:
+    driver: bridge
