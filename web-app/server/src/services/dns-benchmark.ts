@@ -259,8 +259,31 @@ export class DNSBenchmarkService {
     // Remove duplicates
     serversToTest = [...new Set(serversToTest)]
     
-    // Determine domains to test
-    const domainsToTest = domains || this.defaultDomains.slice(0, testType === 'quick' ? 10 : 20)
+    // Determine domains to test using configurable parameters
+    let domainCount = 10 // default fallback
+    if (this.settingsService) {
+      try {
+        const testConfig = await this.settingsService.loadTestConfig()
+        switch (testType) {
+          case 'quick':
+            domainCount = testConfig.domainCounts.quick
+            break
+          case 'full':
+            domainCount = testConfig.domainCounts.full
+            break
+          case 'custom':
+            domainCount = testConfig.domainCounts.custom
+            break
+        }
+      } catch (error) {
+        this.logger.debug({ error }, 'Failed to load test configuration, using defaults')
+        domainCount = testType === 'quick' ? 10 : 20
+      }
+    } else {
+      domainCount = testType === 'quick' ? 10 : 20
+    }
+
+    const domainsToTest = domains || this.defaultDomains.slice(0, domainCount)
     
     // Initialize test status
     const testStatus: TestStatus = {
@@ -297,9 +320,33 @@ export class DNSBenchmarkService {
     options?: BenchmarkOptions
   ): Promise<void> {
     const status = this.activeTests.get(testId)!
-    const timeout = options?.timeout || 2000
-    const retries = options?.retries || 1
-    const concurrent = options?.concurrent || 3
+
+    // Load configurable performance parameters
+    let timeout = 2000
+    let retries = 1
+    let concurrent = 3
+    let rateLimitMs = 0
+
+    if (this.settingsService) {
+      try {
+        const testConfig = await this.settingsService.loadTestConfig()
+        timeout = options?.timeout || testConfig.performance.queryTimeout
+        retries = options?.retries || testConfig.performance.maxRetries
+        concurrent = options?.concurrent || testConfig.performance.maxConcurrentServers
+        rateLimitMs = testConfig.performance.rateLimitMs
+      } catch (error) {
+        this.logger.debug({ error }, 'Failed to load test configuration for performance settings, using defaults')
+        timeout = options?.timeout || 2000
+        retries = options?.retries || 1
+        concurrent = options?.concurrent || 3
+        rateLimitMs = 0
+      }
+    } else {
+      timeout = options?.timeout || 2000
+      retries = options?.retries || 1
+      concurrent = options?.concurrent || 3
+      rateLimitMs = 0
+    }
     
     try {
       const allTests: Array<() => Promise<DNSTestResult>> = []
@@ -311,14 +358,14 @@ export class DNSBenchmarkService {
         }
       }
       
-      // Run tests with concurrency control
+      // Run tests with concurrency control and rate limiting
       const results: DNSTestResult[] = []
       let completedTests = 0
-      
+
       for (let i = 0; i < allTests.length; i += concurrent) {
         const batch = allTests.slice(i, i + concurrent)
         const batchResults = await Promise.allSettled(batch.map(test => test()))
-        
+
         for (const result of batchResults) {
           if (result.status === 'fulfilled') {
             results.push(result.value)
@@ -332,9 +379,14 @@ export class DNSBenchmarkService {
               error: result.reason?.message || 'Test failed'
             })
           }
-          
+
           completedTests++
           status.progress = Math.round((completedTests / status.totalTests) * 100)
+        }
+
+        // Apply rate limiting between batches (except for the last batch)
+        if (rateLimitMs > 0 && i + concurrent < allTests.length) {
+          await new Promise(resolve => setTimeout(resolve, rateLimitMs))
         }
       }
       

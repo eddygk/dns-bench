@@ -368,7 +368,10 @@ export function BenchmarkPage() {
                   )}
                   <span>
                     {test.domain} @ {test.server}:
-                    {test.status === 'success' ? ` ${test.time?.toFixed(1)}ms` : ' Timeout'}
+                    {test.status === 'success'
+                      ? (test.time !== null ? ` ${test.time.toFixed(1)}ms` : ' Testing...')
+                      : ' Timeout'
+                    }
                   </span>
                 </div>
               ))}

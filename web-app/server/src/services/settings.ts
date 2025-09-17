@@ -4,7 +4,7 @@ import dns from 'dns'
 import fs from 'fs/promises'
 import path from 'path'
 import type { Logger } from 'pino'
-import type { CORSSettings, ServerSettings, LocalDNSConfig, PublicDNSConfig, PublicDNSServer } from '@dns-bench/shared'
+import type { CORSSettings, ServerSettings, LocalDNSConfig, PublicDNSConfig, PublicDNSServer, TestConfiguration } from '@dns-bench/shared'
 
 const reverseLookup = promisify(dns.reverse)
 
@@ -12,6 +12,7 @@ export class SettingsService {
   private settingsFile = path.join(process.cwd(), 'settings.json')
   private localDNSFile = path.join(process.cwd(), 'local-dns.json')
   private publicDNSFile = path.join(process.cwd(), 'public-dns.json')
+  private testConfigFile = path.join(process.cwd(), 'test-config.json')
   private defaultSettings: ServerSettings = {
     cors: {
       allowIPAccess: true,
@@ -41,6 +42,31 @@ export class SettingsService {
       { id: 'level3-primary', name: 'Level3 Primary', ip: '4.2.2.1', provider: 'Level3', enabled: false, isPrimary: true },
       { id: 'level3-secondary', name: 'Level3 Secondary', ip: '4.2.2.2', provider: 'Level3', enabled: false, isPrimary: false }
     ]
+  }
+
+  private defaultTestConfig: TestConfiguration = {
+    domainCounts: {
+      quick: 10,
+      full: 20,
+      custom: 30
+    },
+    queryTypes: {
+      cached: true,
+      uncached: true,
+      dotcom: false
+    },
+    performance: {
+      maxConcurrentServers: 3,
+      queryTimeout: 2000,
+      maxRetries: 1,
+      rateLimitMs: 100
+    },
+    analysis: {
+      detectRedirection: true,
+      detectMalwareBlocking: false,
+      testDNSSEC: false,
+      minReliabilityThreshold: 95
+    }
   }
 
   constructor(private logger: Logger) {
@@ -840,5 +866,83 @@ export class SettingsService {
         map.set(server.ip, server.name)
       })
     return map
+  }
+
+  // Test Configuration Management
+  async loadTestConfig(): Promise<TestConfiguration> {
+    try {
+      const data = await fs.readFile(this.testConfigFile, 'utf-8')
+      const config = JSON.parse(data)
+      return { ...this.defaultTestConfig, ...config }
+    } catch (error) {
+      this.logger.debug('No test config found, using defaults')
+      return { ...this.defaultTestConfig }
+    }
+  }
+
+  async saveTestConfig(config: TestConfiguration): Promise<TestConfiguration> {
+    try {
+      this.validateTestConfig(config)
+      await fs.writeFile(this.testConfigFile, JSON.stringify(config, null, 2))
+      this.logger.info(config, 'Test configuration saved')
+      return config
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to save test configuration')
+      throw error
+    }
+  }
+
+  private validateTestConfig(config: TestConfiguration): void {
+    // Validate domain counts
+    if (!config.domainCounts) {
+      throw new Error('Domain counts configuration is required')
+    }
+
+    if (config.domainCounts.quick < 5 || config.domainCounts.quick > 50) {
+      throw new Error('Quick test domain count must be between 5 and 50')
+    }
+
+    if (config.domainCounts.full < 10 || config.domainCounts.full > 200) {
+      throw new Error('Full test domain count must be between 10 and 200')
+    }
+
+    if (config.domainCounts.custom < 1 || config.domainCounts.custom > 500) {
+      throw new Error('Custom test domain count must be between 1 and 500')
+    }
+
+    // Validate query types (at least one must be enabled)
+    if (!config.queryTypes || (!config.queryTypes.cached && !config.queryTypes.uncached && !config.queryTypes.dotcom)) {
+      throw new Error('At least one query type must be enabled')
+    }
+
+    // Validate performance settings
+    if (!config.performance) {
+      throw new Error('Performance configuration is required')
+    }
+
+    if (config.performance.maxConcurrentServers < 1 || config.performance.maxConcurrentServers > 10) {
+      throw new Error('Max concurrent servers must be between 1 and 10')
+    }
+
+    if (config.performance.queryTimeout < 1000 || config.performance.queryTimeout > 10000) {
+      throw new Error('Query timeout must be between 1000ms and 10000ms')
+    }
+
+    if (config.performance.maxRetries < 0 || config.performance.maxRetries > 5) {
+      throw new Error('Max retries must be between 0 and 5')
+    }
+
+    if (config.performance.rateLimitMs < 0 || config.performance.rateLimitMs > 1000) {
+      throw new Error('Rate limit must be between 0ms and 1000ms')
+    }
+
+    // Validate analysis settings
+    if (!config.analysis) {
+      throw new Error('Analysis configuration is required')
+    }
+
+    if (config.analysis.minReliabilityThreshold < 50 || config.analysis.minReliabilityThreshold > 100) {
+      throw new Error('Minimum reliability threshold must be between 50% and 100%')
+    }
   }
 }

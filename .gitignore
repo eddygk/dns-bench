@@ -6,3 +6,4 @@ web-app/server/node_modules/
 data/
 .playwright-mcp/
 .claude/
+DNS_BENCHMARK_GAP_ANALYSIS.md

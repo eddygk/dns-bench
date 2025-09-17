@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Slider } from '@/components/ui/slider'
+import { Checkbox } from '@/components/ui/checkbox'
 import { apiRequest } from '@/lib/api'
 import { Settings, Bell, Palette, Database, Globe, RefreshCw, Plus, X, Trash2, Server } from 'lucide-react'
 
@@ -39,6 +41,31 @@ interface PublicDNSConfig {
   servers: PublicDNSServer[]
 }
 
+interface TestConfiguration {
+  domainCounts: {
+    quick: number
+    full: number
+    custom: number
+  }
+  queryTypes: {
+    cached: boolean
+    uncached: boolean
+    dotcom: boolean
+  }
+  performance: {
+    maxConcurrentServers: number
+    queryTimeout: number
+    maxRetries: number
+    rateLimitMs: number
+  }
+  analysis: {
+    detectRedirection: boolean
+    detectMalwareBlocking: boolean
+    testDNSSEC: boolean
+    minReliabilityThreshold: number
+  }
+}
+
 export function SettingsPage() {
   const queryClient = useQueryClient()
   const [corsSettings, setCorsSettings] = useState<CORSSettings>({
@@ -52,11 +79,18 @@ export function SettingsPage() {
   const [publicDNSConfig, setPublicDNSConfig] = useState<PublicDNSConfig>({
     servers: []
   })
+  const [testConfig, setTestConfig] = useState<TestConfiguration>({
+    domainCounts: { quick: 10, full: 20, custom: 30 },
+    queryTypes: { cached: true, uncached: true, dotcom: false },
+    performance: { maxConcurrentServers: 3, queryTimeout: 2000, maxRetries: 1, rateLimitMs: 100 },
+    analysis: { detectRedirection: true, detectMalwareBlocking: false, testDNSSEC: false, minReliabilityThreshold: 95 }
+  })
   // isLoading now comes from React Query below
   const [isSaving, setIsSaving] = useState(false)
   const [isDetectingHostname, setIsDetectingHostname] = useState(false)
   const [isSavingDNS, setIsSavingDNS] = useState(false)
   const [isSavingPublicDNS, setIsSavingPublicDNS] = useState(false)
+  const [isSavingTestConfig, setIsSavingTestConfig] = useState(false)
   const [newOrigin, setNewOrigin] = useState('')
 
   // Load settings using React Query for automatic refetching
@@ -102,6 +136,17 @@ export function SettingsPage() {
     refetchOnWindowFocus: true
   })
 
+  const { data: testConfigData } = useQuery({
+    queryKey: ['test-config'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/settings/test-config')
+      const data = await response.json()
+      return data.config
+    },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true
+  })
+
   // Update state when query data changes (React Query v5 compatible)
   useEffect(() => {
     if (settingsData?.settings?.cors) {
@@ -132,6 +177,12 @@ export function SettingsPage() {
       setPublicDNSConfig(publicDNSData)
     }
   }, [publicDNSData])
+
+  useEffect(() => {
+    if (testConfigData) {
+      setTestConfig(testConfigData)
+    }
+  }, [testConfigData])
 
   const saveCorsSettings = async () => {
     setIsSaving(true)
@@ -231,6 +282,27 @@ export function SettingsPage() {
       console.error('Failed to save public DNS settings:', error)
     } finally {
       setIsSavingPublicDNS(false)
+    }
+  }
+
+  const saveTestConfig = async () => {
+    setIsSavingTestConfig(true)
+    try {
+      const response = await apiRequest('/api/settings/test-config', {
+        method: 'PUT',
+        body: JSON.stringify(testConfig),
+      })
+
+      if (response.ok) {
+        // Invalidate and refetch the query instead of manually updating state
+        queryClient.invalidateQueries({ queryKey: ['test-config'] })
+      } else {
+        throw new Error('Failed to save test configuration')
+      }
+    } catch (error) {
+      console.error('Failed to save test configuration:', error)
+    } finally {
+      setIsSavingTestConfig(false)
     }
   }
 
@@ -632,6 +704,250 @@ export function SettingsPage() {
           <div className="flex justify-end">
             <Button onClick={savePublicDNSConfig} disabled={isSavingPublicDNS}>
               {isSavingPublicDNS ? 'Saving...' : 'Save Public DNS Configuration'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Test Configuration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <Settings className="h-5 w-5" />
+            <CardTitle>Test Configuration</CardTitle>
+          </div>
+          <CardDescription>
+            Customize DNS benchmark test parameters for different scenarios
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Domain Count Configuration */}
+          <div className="space-y-4">
+            <Label className="text-base font-medium">Domain Count per Test Type</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="quick-domains">Quick Test</Label>
+                <Input
+                  id="quick-domains"
+                  type="number"
+                  min="5"
+                  max="50"
+                  value={testConfig.domainCounts.quick}
+                  onChange={(e) => setTestConfig(prev => ({
+                    ...prev,
+                    domainCounts: { ...prev.domainCounts, quick: parseInt(e.target.value) || 5 }
+                  }))}
+                />
+                <p className="text-xs text-muted-foreground">5-50 domains</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="full-domains">Full Test</Label>
+                <Input
+                  id="full-domains"
+                  type="number"
+                  min="10"
+                  max="200"
+                  value={testConfig.domainCounts.full}
+                  onChange={(e) => setTestConfig(prev => ({
+                    ...prev,
+                    domainCounts: { ...prev.domainCounts, full: parseInt(e.target.value) || 10 }
+                  }))}
+                />
+                <p className="text-xs text-muted-foreground">10-200 domains</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="custom-domains">Custom Test</Label>
+                <Input
+                  id="custom-domains"
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={testConfig.domainCounts.custom}
+                  onChange={(e) => setTestConfig(prev => ({
+                    ...prev,
+                    domainCounts: { ...prev.domainCounts, custom: parseInt(e.target.value) || 1 }
+                  }))}
+                />
+                <p className="text-xs text-muted-foreground">1-500 domains</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Query Types */}
+          <div className="space-y-4">
+            <Label className="text-base font-medium">Query Types</Label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="cached-queries"
+                  checked={testConfig.queryTypes.cached}
+                  onCheckedChange={(checked) => setTestConfig(prev => ({
+                    ...prev,
+                    queryTypes: { ...prev.queryTypes, cached: !!checked }
+                  }))}
+                />
+                <Label htmlFor="cached-queries">Cached Queries</Label>
+                <p className="text-sm text-muted-foreground">Measure cache performance</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="uncached-queries"
+                  checked={testConfig.queryTypes.uncached}
+                  onCheckedChange={(checked) => setTestConfig(prev => ({
+                    ...prev,
+                    queryTypes: { ...prev.queryTypes, uncached: !!checked }
+                  }))}
+                />
+                <Label htmlFor="uncached-queries">Uncached Queries</Label>
+                <p className="text-sm text-muted-foreground">Measure resolution speed</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="dotcom-queries"
+                  checked={testConfig.queryTypes.dotcom}
+                  onCheckedChange={(checked) => setTestConfig(prev => ({
+                    ...prev,
+                    queryTypes: { ...prev.queryTypes, dotcom: !!checked }
+                  }))}
+                />
+                <Label htmlFor="dotcom-queries">DotCom Queries</Label>
+                <p className="text-sm text-muted-foreground">Measure TLD performance</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Settings */}
+          <div className="space-y-4">
+            <Label className="text-base font-medium">Performance Settings</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="concurrent-servers">Concurrent Servers: {testConfig.performance.maxConcurrentServers}</Label>
+                <Slider
+                  id="concurrent-servers"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={[testConfig.performance.maxConcurrentServers]}
+                  onValueChange={(value) => setTestConfig(prev => ({
+                    ...prev,
+                    performance: { ...prev.performance, maxConcurrentServers: value[0] }
+                  }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="query-timeout">Query Timeout</Label>
+                <Input
+                  id="query-timeout"
+                  type="number"
+                  min="1000"
+                  max="10000"
+                  value={testConfig.performance.queryTimeout}
+                  onChange={(e) => setTestConfig(prev => ({
+                    ...prev,
+                    performance: { ...prev.performance, queryTimeout: parseInt(e.target.value) || 1000 }
+                  }))}
+                />
+                <p className="text-xs text-muted-foreground">1000-10000ms</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="max-retries">Max Retries: {testConfig.performance.maxRetries}</Label>
+                <Slider
+                  id="max-retries"
+                  min={0}
+                  max={5}
+                  step={1}
+                  value={[testConfig.performance.maxRetries]}
+                  onValueChange={(value) => setTestConfig(prev => ({
+                    ...prev,
+                    performance: { ...prev.performance, maxRetries: value[0] }
+                  }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rate-limit">Rate Limit</Label>
+                <Input
+                  id="rate-limit"
+                  type="number"
+                  min="0"
+                  max="1000"
+                  value={testConfig.performance.rateLimitMs}
+                  onChange={(e) => setTestConfig(prev => ({
+                    ...prev,
+                    performance: { ...prev.performance, rateLimitMs: parseInt(e.target.value) || 0 }
+                  }))}
+                />
+                <p className="text-xs text-muted-foreground">0-1000ms between queries</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Analysis Features */}
+          <div className="space-y-4">
+            <Label className="text-base font-medium">Analysis Features</Label>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="detect-redirection">Detect NXDOMAIN Redirection</Label>
+                  <p className="text-sm text-muted-foreground">Test for DNS hijacking</p>
+                </div>
+                <Switch
+                  id="detect-redirection"
+                  checked={testConfig.analysis.detectRedirection}
+                  onCheckedChange={(checked) => setTestConfig(prev => ({
+                    ...prev,
+                    analysis: { ...prev.analysis, detectRedirection: checked }
+                  }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="detect-malware">Detect Malware Blocking</Label>
+                  <p className="text-sm text-muted-foreground">Test security filtering</p>
+                </div>
+                <Switch
+                  id="detect-malware"
+                  checked={testConfig.analysis.detectMalwareBlocking}
+                  onCheckedChange={(checked) => setTestConfig(prev => ({
+                    ...prev,
+                    analysis: { ...prev.analysis, detectMalwareBlocking: checked }
+                  }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="test-dnssec">Test DNSSEC Support</Label>
+                  <p className="text-sm text-muted-foreground">Verify DNSSEC validation (coming soon)</p>
+                </div>
+                <Switch
+                  id="test-dnssec"
+                  checked={testConfig.analysis.testDNSSEC}
+                  onCheckedChange={(checked) => setTestConfig(prev => ({
+                    ...prev,
+                    analysis: { ...prev.analysis, testDNSSEC: checked }
+                  }))}
+                  disabled
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reliability-threshold">Min Reliability Threshold: {testConfig.analysis.minReliabilityThreshold}%</Label>
+                <Slider
+                  id="reliability-threshold"
+                  min={50}
+                  max={100}
+                  step={5}
+                  value={[testConfig.analysis.minReliabilityThreshold]}
+                  onValueChange={(value) => setTestConfig(prev => ({
+                    ...prev,
+                    analysis: { ...prev.analysis, minReliabilityThreshold: value[0] }
+                  }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={saveTestConfig} disabled={isSavingTestConfig}>
+              {isSavingTestConfig ? 'Saving...' : 'Save Test Configuration'}
             </Button>
           </div>
         </CardContent>

@@ -12,7 +12,7 @@ import { DNSBenchmarkService } from './services/dns-benchmark.js'
 import { DatabaseService } from './services/database.js'
 import { WebSocketService } from './services/websocket.js'
 import { SettingsService } from './services/settings.js'
-import type { BenchmarkOptions, DNSServer, UpdateCORSSettingsRequest, LocalDNSConfig } from '@dns-bench/shared'
+import type { BenchmarkOptions, DNSServer, UpdateCORSSettingsRequest, LocalDNSConfig, TestConfiguration } from '@dns-bench/shared'
 
 // Load environment variables
 dotenv.config()
@@ -122,6 +122,33 @@ const publicDNSSchema = z.object({
     enabled: z.boolean(),
     isPrimary: z.boolean().optional()
   })).min(1).max(20)
+})
+
+const testConfigSchema = z.object({
+  domainCounts: z.object({
+    quick: z.number().min(5).max(50),
+    full: z.number().min(10).max(200),
+    custom: z.number().min(1).max(500)
+  }),
+  queryTypes: z.object({
+    cached: z.boolean(),
+    uncached: z.boolean(),
+    dotcom: z.boolean()
+  }).refine(data => data.cached || data.uncached || data.dotcom, {
+    message: "At least one query type must be enabled"
+  }),
+  performance: z.object({
+    maxConcurrentServers: z.number().min(1).max(10),
+    queryTimeout: z.number().min(1000).max(10000),
+    maxRetries: z.number().min(0).max(5),
+    rateLimitMs: z.number().min(0).max(1000)
+  }),
+  analysis: z.object({
+    detectRedirection: z.boolean(),
+    detectMalwareBlocking: z.boolean(),
+    testDNSSEC: z.boolean(),
+    minReliabilityThreshold: z.number().min(50).max(100)
+  })
 })
 
 // Routes
@@ -428,6 +455,32 @@ app.put('/api/settings/public-dns', async (req, res) => {
     } else {
       logger.error({ error }, 'Failed to save public DNS configuration')
       res.status(500).json({ error: 'Failed to save public DNS configuration' })
+    }
+  }
+})
+
+// Test configuration endpoints
+app.get('/api/settings/test-config', async (req, res) => {
+  try {
+    const config = await settingsService.loadTestConfig()
+    res.json({ config })
+  } catch (error) {
+    logger.error({ error }, 'Failed to get test configuration')
+    res.status(500).json({ error: 'Failed to get test configuration' })
+  }
+})
+
+app.put('/api/settings/test-config', async (req, res) => {
+  try {
+    const config = testConfigSchema.parse(req.body)
+    const savedConfig = await settingsService.saveTestConfig(config)
+    res.json({ config: savedConfig })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid test configuration', details: error.errors })
+    } else {
+      logger.error({ error }, 'Failed to save test configuration')
+      res.status(500).json({ error: 'Failed to save test configuration' })
     }
   }
 })

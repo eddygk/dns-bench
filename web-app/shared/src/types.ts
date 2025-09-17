@@ -247,3 +247,37 @@ export interface UpdatePublicDNSRequest {
 export interface GetPublicDNSResponse {
   config: PublicDNSConfig
 }
+
+// Test Configuration types
+export interface TestConfiguration {
+  domainCounts: {
+    quick: number
+    full: number
+    custom: number
+  }
+  queryTypes: {
+    cached: boolean
+    uncached: boolean
+    dotcom: boolean
+  }
+  performance: {
+    maxConcurrentServers: number
+    queryTimeout: number
+    maxRetries: number
+    rateLimitMs: number
+  }
+  analysis: {
+    detectRedirection: boolean
+    detectMalwareBlocking: boolean
+    testDNSSEC: boolean
+    minReliabilityThreshold: number
+  }
+}
+
+export interface UpdateTestConfigRequest {
+  config: TestConfiguration
+}
+
+export interface GetTestConfigResponse {
+  config: TestConfiguration
+}
