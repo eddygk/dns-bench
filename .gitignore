@@ -6,6 +6,21 @@ web-app/server/node_modules/
 data/
 .playwright-mcp/
 .claude/
-DNS_BENCHMARK_GAP_ANALYSIS.md
-CLAUDE.md
-reference-dns-benchmark.md
+
+# Database files (runtime data)
+*.db
+*.sqlite
+*.sqlite3
+web-app/server/dns-bench.db
+web-app/server/*.db
+
+# Configuration files with potentially sensitive data
+web-app/server/local-dns.json
+web-app/server/public-dns.json
+
+# Confidential business strategy documentation
+docs/MONETIZATION_STRATEGIES.md
+
+# Internal documentation (moved to docs/ folder, but keep reference-dns-benchmark.md for gap analysis)
+docs/DNS_BENCHMARK_GAP_ANALYSIS.md
+docs/reference-dns-benchmark.md
