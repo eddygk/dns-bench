@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DNS Benchmark Tool for Linux
-Similar to Steve Gibson's DNS Bench - automatically detects current DNS servers
+Industry-standard DNS benchmarking - automatically detects current DNS servers
 and benchmarks them against popular public DNS servers.
 """
 

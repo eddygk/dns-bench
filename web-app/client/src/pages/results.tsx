@@ -8,6 +8,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Download, Clock, CheckCircle, Award, Loader2, AlertTriangle, ChevronDown, ChevronUp, Eye, Activity, Server, Globe } from 'lucide-react'
 import { apiRequest } from '@/lib/api'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 
 interface BenchmarkResult {
   server: string
@@ -73,6 +81,8 @@ export function ResultsPage() {
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
   const [isDomainAnalysisExpanded, setIsDomainAnalysisExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
+  const [rawDiagnosticsPage, setRawDiagnosticsPage] = useState(1)
+  const [failedDomainsPerPage] = useState(10)
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -179,6 +189,12 @@ export function ResultsPage() {
   const repeatOffenders = getRepeatOffenders(domainResults)
   const serverFailureMap = getServerFailureBreakdown(domainResults)
   const errorTypeBreakdown = getErrorTypeBreakdown(failedDomains)
+
+  // Pagination calculations
+  const totalPages = Math.ceil(failedDomains.length / failedDomainsPerPage)
+  const startIndex = (rawDiagnosticsPage - 1) * failedDomainsPerPage
+  const endIndex = startIndex + failedDomainsPerPage
+  const paginatedFailedDomains = failedDomains.slice(startIndex, endIndex)
 
   function getRepeatOffenders(results: DomainResult[]) {
     const domainFailureCounts = results.reduce<Record<string, { count: number; servers: string[]; errors: string[] }>>((acc, result) => {
@@ -314,7 +330,7 @@ export function ResultsPage() {
           <CardContent>
             <div className="text-2xl font-bold">{Math.round((new Date(results.completedAt).getTime() - new Date(results.startedAt).getTime()) / 1000)}s</div>
             <p className="text-xs text-muted-foreground">
-              {results.results.length} servers, {results.options.domains.length} domains each
+              {results.results.length} servers × {results.options.domains.length} domains = {results.results.length * results.options.domains.length} total tests
             </p>
           </CardContent>
         </Card>
@@ -609,14 +625,14 @@ export function ResultsPage() {
                       <div className="mt-3 pt-3 border-t">
                         <p className="text-sm font-medium mb-2">Failed Domains:</p>
                         <div className="flex flex-wrap gap-1">
-                          {server.failedDomains.slice(0, 8).map(domain => (
+                          {server.failedDomains.slice(0, 12).map(domain => (
                             <Badge key={domain} variant="secondary" className="text-xs">
                               {domain}
                             </Badge>
                           ))}
-                          {server.failedDomains.length > 8 && (
+                          {server.failedDomains.length > 12 && (
                             <Badge variant="outline" className="text-xs">
-                              +{server.failedDomains.length - 8} more
+                              +{server.failedDomains.length - 12} more
                             </Badge>
                           )}
                         </div>
@@ -764,11 +780,16 @@ export function ResultsPage() {
               <CardTitle>Raw DNS Query Diagnostics</CardTitle>
               <CardDescription>
                 Detailed technical output for troubleshooting DNS issues
+                {failedDomains.length > 0 && (
+                  <span className="ml-2 text-sm">
+                    (Showing {startIndex + 1}-{Math.min(endIndex, failedDomains.length)} of {failedDomains.length} failed tests)
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {failedDomains.slice(0, 20).map((result, idx) => (
+                {paginatedFailedDomains.map((result, idx) => (
                   <div key={`${result.domain}-${result.serverIp}-${idx}`} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
                     <div className="flex items-center justify-between mb-3">
                       <div className="font-mono text-sm font-bold">
@@ -807,10 +828,58 @@ export function ResultsPage() {
                     )}
                   </div>
                 ))}
-                {failedDomains.length > 20 && (
-                  <div className="text-center p-4 text-muted-foreground">
-                    Showing first 20 of {failedDomains.length} failed queries.
-                    <Button variant="link" onClick={() => handleExport('json')}>Export all data</Button>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center pt-6">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => setRawDiagnosticsPage(Math.max(1, rawDiagnosticsPage - 1))}
+                            className={rawDiagnosticsPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          />
+                        </PaginationItem>
+
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (rawDiagnosticsPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (rawDiagnosticsPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = rawDiagnosticsPage - 2 + i;
+                          }
+
+                          return (
+                            <PaginationItem key={pageNum}>
+                              <PaginationLink
+                                onClick={() => setRawDiagnosticsPage(pageNum)}
+                                isActive={pageNum === rawDiagnosticsPage}
+                                className="cursor-pointer"
+                              >
+                                {pageNum}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        })}
+
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => setRawDiagnosticsPage(Math.min(totalPages, rawDiagnosticsPage + 1))}
+                            className={rawDiagnosticsPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+
+                {failedDomains.length > 0 && (
+                  <div className="text-center pt-4 text-muted-foreground text-sm">
+                    <Button variant="link" onClick={() => handleExport('json')}>Export all diagnostic data</Button>
                   </div>
                 )}
               </div>

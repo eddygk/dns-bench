@@ -11,26 +11,99 @@ import type { DatabaseService } from './database.js'
 export class DNSBenchmarkService {
   private activeTests = new Map<string, TestStatus>()
   private readonly defaultDomains = [
+    // Top Global Sites (Most likely to be cached)
     'google.com',
-    'cloudflare.com',
-    'github.com',
-    'stackoverflow.com',
-    'reddit.com',
-    'netflix.com',
+    'youtube.com',
+    'facebook.com',
+    'instagram.com',
+    'twitter.com',
+    'linkedin.com',
+    'tiktok.com',
     'amazon.com',
     'microsoft.com',
     'apple.com',
-    'facebook.com',
-    'twitter.com',
-    'linkedin.com',
+    'netflix.com',
     'wikipedia.org',
-    'youtube.com',
-    'instagram.com',
-    'tiktok.com',
+    'reddit.com',
+    'github.com',
+    'stackoverflow.com',
+
+    // Major Search Engines & Services
+    'bing.com',
+    'yahoo.com',
+    'duckduckgo.com',
+    'gmail.com',
+    'outlook.com',
+    'dropbox.com',
+    'zoom.us',
+    'slack.com',
     'discord.com',
+    'whatsapp.com',
+
+    // Major News & Media
+    'cnn.com',
+    'bbc.com',
+    'nytimes.com',
+    'theguardian.com',
+    'reuters.com',
+    'espn.com',
     'twitch.tv',
+    'spotify.com',
+    'hulu.com',
+    'disney.com',
+
+    // E-commerce & Shopping
+    'ebay.com',
+    'etsy.com',
+    'walmart.com',
+    'target.com',
+    'shopify.com',
+    'paypal.com',
+    'stripe.com',
+
+    // Technology & Cloud Services
+    'cloudflare.com',
+    'aws.amazon.com',
+    'azure.microsoft.com',
+    'heroku.com',
+    'digitalocean.com',
+    'vercel.com',
+    'netlify.com',
+    'firebase.google.com',
+
+    // International & Regional
     'baidu.com',
-    'yandex.ru'
+    'yandex.ru',
+    'alibaba.com',
+    'tencent.com',
+    'vk.com',
+    'naver.com',
+    'yahoo.co.jp',
+    'rakuten.com',
+
+    // Educational & Government
+    'mit.edu',
+    'stanford.edu',
+    'harvard.edu',
+    'berkeley.edu',
+    'gov.uk',
+    'canada.ca',
+
+    // Financial Services
+    'chase.com',
+    'bankofamerica.com',
+    'wells.com',
+    'americanexpress.com',
+    'visa.com',
+    'mastercard.com',
+    'coinbase.com',
+
+    // Additional Popular Services
+    'wordpress.com',
+    'medium.com',
+    'tumblr.com',
+    'pinterest.com',
+    'snapchat.com'
   ]
 
   private readonly publicDNS = {

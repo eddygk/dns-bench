@@ -26,7 +26,11 @@
       "mcp__shadcn__get_item_examples_from_registries",
       "mcp__shadcn__get_add_command_for_items",
       "Bash(npx shadcn@latest add:*)",
-      "mcp__perplexity-mcp__perplexity_ask"
+      "mcp__perplexity-mcp__perplexity_ask",
+      "mcp__shadcn__view_items_in_registries",
+      "Bash(netstat:*)",
+      "Bash(ss:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

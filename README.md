@@ -8,10 +8,10 @@ A modern web-based DNS benchmarking application that tests and compares DNS serv
 
 - **🌐 Web-Based Interface** - Modern React UI with shadcn/ui components
 - **⚙️ Configurable DNS Servers** - Manage both local and public DNS servers through intuitive Settings interface
-- **⚡ Performance Benchmarking** - Tests response times across 20 diverse domains
+- **⚡ Performance Benchmarking** - Tests response times across 72+ diverse domains
 - **🌍 Customizable Public DNS** - Add, edit, enable/disable public DNS providers (default: Cloudflare, Google, Quad9)
 - **📊 Real-Time Updates** - Live progress tracking via Socket.IO during benchmarks
-- **📈 Enhanced Failure Diagnostics** - Tabbed interface with repeat offender detection and detailed error analysis
+- **📈 Enhanced Failure Diagnostics** - Tabbed interface with repeat offender detection, pagination, and detailed error analysis
 - **📋 Statistical Analysis** - Avg, min, max, median response times and success rates
 - **💾 History Tracking** - SQLite database stores benchmark results
 - **🐳 Docker Ready** - Multi-container orchestration for easy deployment
@@ -100,8 +100,9 @@ Navigate to **Settings** to configure your DNS servers:
 - **Server breakdown**: Per-server failure analysis showing problematic DNS servers
 - **Per-Server Domain Analysis**: Collapsible server entries showing detailed domain-by-domain test results
 - **Smart recommendations**: Actionable insights based on performance data
-- **Raw diagnostics**: Technical DNS query output for troubleshooting
+- **Paginated Raw diagnostics**: Professional pagination for large result sets using shadcn/ui components
 - **Statistical breakdown** per DNS server with success rates
+- **Comprehensive domain coverage**: Tests 72+ domains across global sites, services, news, e-commerce, technology, international, educational, and financial sectors
 
 ### History
 - Browse past benchmark results
@@ -356,6 +357,8 @@ Contributions welcome! Areas for improvement:
 - [x] ~~Enhanced result visualization with more chart types~~ ✅ **COMPLETED**
 - [x] ~~Implement result export (CSV/JSON)~~ ✅ **COMPLETED**
 - [x] ~~Enhanced failure diagnostics and analysis~~ ✅ **COMPLETED**
+- [ ] Implement 3-query methodology (cached/uncached/dotcom testing)
+- [ ] Add statistical analysis (min/max/standard deviation per query type)
 - [ ] Add more DNS providers (Comodo, Norton, etc.)
 - [ ] Add scheduling for automated tests
 - [ ] Improve mobile responsive design
@@ -384,7 +387,7 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 ## 🙏 Acknowledgments
 
-- Inspired by [Steve Gibson's DNS Bench](https://www.grc.com/dns/benchmark.htm)
+- Inspired by industry-standard DNS benchmarking methodologies
 - Built with [shadcn/ui](https://ui.shadcn.com/) components
 - Uses Docker for containerization
 - React + TypeScript for modern web development

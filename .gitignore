@@ -7,3 +7,5 @@ data/
 .playwright-mcp/
 .claude/
 DNS_BENCHMARK_GAP_ANALYSIS.md
+CLAUDE.md
+reference-dns-benchmark.md

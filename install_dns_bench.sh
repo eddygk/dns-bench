@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # DNS Bench Linux - Installation Script
-# Installs a DNS benchmarking tool similar to Steve Gibson's DNS Bench
+# Installs a DNS benchmarking tool for testing DNS server performance
 
 set -e
 
@@ -47,7 +47,7 @@ cat > /tmp/dns_bench_final.py << 'EOF'
 #!/usr/bin/env python3
 """
 DNS Benchmark Tool for Linux
-Similar to Steve Gibson's DNS Bench - automatically detects current DNS servers
+Industry-standard DNS benchmarking - automatically detects current DNS servers
 and benchmarks them against popular public DNS servers.
 """
 
