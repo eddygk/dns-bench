@@ -24,3 +24,6 @@ docs/MONETIZATION_STRATEGIES.md
 # Internal documentation (moved to docs/ folder, but keep reference-dns-benchmark.md for gap analysis)
 docs/DNS_BENCHMARK_GAP_ANALYSIS.md
 docs/reference-dns-benchmark.md
+
+# Spec-kit implementation guide (environment-specific)
+docs/spec-kit.md
