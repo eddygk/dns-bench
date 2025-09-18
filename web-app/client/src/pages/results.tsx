@@ -3,6 +3,15 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -416,42 +425,56 @@ export function ResultsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Rank</th>
-                  <th className="text-left p-2">DNS Server</th>
-                  <th className="text-left p-2">Success Rate</th>
-                  <th className="text-left p-2">Avg Time</th>
-                  <th className="text-left p-2">Min Time</th>
-                  <th className="text-left p-2">Max Time</th>
-                  <th className="text-left p-2">Median</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.results.map((server, index) => (
-                  <tr key={server.server} className="border-b">
-                    <td className="p-2">
-                      <Badge variant={index === 0 ? 'default' : 'secondary'}>
-                        #{index + 1}
-                      </Badge>
-                    </td>
-                    <td className="p-2 font-medium">{server.serverName}</td>
-                    <td className="p-2">
-                      <span className={server.successRate >= 95 ? 'text-green-600' : server.successRate > 0 ? 'text-yellow-600' : 'text-red-600'}>
-                        {server.successRate.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="p-2 font-mono">{server.avgResponseTime > 0 ? `${server.avgResponseTime}ms` : '--'}</td>
-                    <td className="p-2 font-mono">{server.minResponseTime > 0 ? `${server.minResponseTime}ms` : '--'}</td>
-                    <td className="p-2 font-mono">{server.maxResponseTime > 0 ? `${server.maxResponseTime}ms` : '--'}</td>
-                    <td className="p-2 font-mono">{server.medianResponseTime > 0 ? `${server.medianResponseTime}ms` : '--'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table className="min-w-[720px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-20">Rank</TableHead>
+                <TableHead>DNS Server</TableHead>
+                <TableHead>Success Rate</TableHead>
+                <TableHead>Avg Time</TableHead>
+                <TableHead>Min Time</TableHead>
+                <TableHead>Max Time</TableHead>
+                <TableHead>Median</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {results.results.map((server, index) => (
+                <TableRow key={server.server}>
+                  <TableCell>
+                    <Badge variant={index === 0 ? 'default' : 'secondary'}>
+                      #{index + 1}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">{server.serverName}</TableCell>
+                  <TableCell>
+                    <span
+                      className={
+                        server.successRate >= 95
+                          ? 'text-green-600'
+                          : server.successRate > 0
+                            ? 'text-yellow-600'
+                            : 'text-red-600'
+                      }
+                    >
+                      {server.successRate.toFixed(1)}%
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {server.avgResponseTime > 0 ? `${server.avgResponseTime}ms` : '--'}
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {server.minResponseTime > 0 ? `${server.minResponseTime}ms` : '--'}
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {server.maxResponseTime > 0 ? `${server.maxResponseTime}ms` : '--'}
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {server.medianResponseTime > 0 ? `${server.medianResponseTime}ms` : '--'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
         </TabsContent>
@@ -473,25 +496,33 @@ export function ResultsPage() {
               <CardContent>
                 <div className="space-y-3">
                   {repeatOffenders.map((offender) => (
-                    <div key={offender.domain} className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-950">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Globe className="h-5 w-5 text-red-600" />
-                          <div>
-                            <h4 className="font-semibold text-red-900 dark:text-red-100">{offender.domain}</h4>
-                            <p className="text-sm text-red-700 dark:text-red-300">
-                              Failed {offender.count} times across {offender.servers.length} servers
+                    <Alert
+                      key={offender.domain}
+                      variant="destructive"
+                      className="space-y-3"
+                    >
+                      <Globe className="h-5 w-5" />
+                      <div className="space-y-2">
+                        <AlertTitle className="flex items-center gap-2">
+                          {offender.domain}
+                          <Badge variant="destructive" className="text-xs">
+                            {offender.count} failures
+                          </Badge>
+                        </AlertTitle>
+                        <AlertDescription>
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <p>
+                              Failed {offender.count} times across {offender.servers.length}{' '}
+                              {offender.servers.length === 1 ? 'server' : 'servers'}.
                             </p>
+                            <div className="text-sm sm:text-right">
+                              <div>Servers: {offender.servers.slice(0, 4).join(', ')}{offender.servers.length > 4 ? '…' : ''}</div>
+                              <div>Errors: {offender.errors.slice(0, 3).join(', ')}{offender.errors.length > 3 ? '…' : ''}</div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-red-600 dark:text-red-400 space-y-1">
-                            <div>Servers: {offender.servers.map(s => s.slice(-3)).join(', ')}</div>
-                            <div>Errors: {offender.errors.slice(0, 2).join(', ')}{offender.errors.length > 2 ? '...' : ''}</div>
-                          </div>
-                        </div>
+                        </AlertDescription>
                       </div>
-                    </div>
+                    </Alert>
                   ))}
                 </div>
               </CardContent>
@@ -724,43 +755,43 @@ export function ResultsPage() {
                             </div>
                           </CollapsibleTrigger>
                           <CollapsibleContent className="mt-2">
-                            <div className="ml-7 overflow-x-auto">
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="border-b">
-                                    <th className="text-left p-2">Domain</th>
-                                    <th className="text-left p-2">Status</th>
-                                    <th className="text-left p-2">Response Time</th>
-                                    <th className="text-left p-2">Response Code</th>
-                                    <th className="text-left p-2">IP Result</th>
-                                    <th className="text-left p-2">Error</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
+                            <div className="ml-7">
+                              <Table className="min-w-[640px] text-xs">
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="w-40">Domain</TableHead>
+                                    <TableHead className="w-24">Status</TableHead>
+                                    <TableHead className="w-28">Response Time</TableHead>
+                                    <TableHead className="w-32">Response Code</TableHead>
+                                    <TableHead className="w-32">IP Result</TableHead>
+                                    <TableHead>Error</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
                                   {sortedResults.map((result, idx) => (
-                                    <tr key={`${result.domain}-${idx}`} className="border-b">
-                                      <td className="p-2 font-medium">{result.domain}</td>
-                                      <td className="p-2">
-                                        <Badge variant={result.success ? "default" : "destructive"} className="text-xs">
+                                    <TableRow key={`${result.domain}-${idx}`}>
+                                      <TableCell className="font-medium">{result.domain}</TableCell>
+                                      <TableCell>
+                                        <Badge variant={result.success ? 'default' : 'destructive'} className="text-xs">
                                           {result.success ? 'Success' : 'Failed'}
                                         </Badge>
-                                      </td>
-                                      <td className="p-2 font-mono text-xs">
+                                      </TableCell>
+                                      <TableCell className="font-mono text-xs">
                                         {result.responseTime ? `${result.responseTime}ms` : '--'}
-                                      </td>
-                                      <td className="p-2 font-mono text-xs">
+                                      </TableCell>
+                                      <TableCell className="font-mono text-xs">
                                         {result.responseCode || '--'}
-                                      </td>
-                                      <td className="p-2 font-mono text-xs">
+                                      </TableCell>
+                                      <TableCell className="font-mono text-xs">
                                         {result.ipResult || '--'}
-                                      </td>
-                                      <td className="p-2 text-xs">
+                                      </TableCell>
+                                      <TableCell className="text-xs">
                                         {result.errorMessage || result.errorType || '--'}
-                                      </td>
-                                    </tr>
+                                      </TableCell>
+                                    </TableRow>
                                   ))}
-                                </tbody>
-                              </table>
+                                </TableBody>
+                              </Table>
                             </div>
                           </CollapsibleContent>
                         </Collapsible>
@@ -982,43 +1013,43 @@ export function ResultsPage() {
                               </div>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="mt-2">
-                              <div className="ml-7 overflow-x-auto">
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className="border-b">
-                                      <th className="text-left p-2">DNS Server</th>
-                                      <th className="text-left p-2">Status</th>
-                                      <th className="text-left p-2">Response Time</th>
-                                      <th className="text-left p-2">Response Code</th>
-                                      <th className="text-left p-2">IP Result</th>
-                                      <th className="text-left p-2">Error</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
+                              <div className="ml-7">
+                                <Table className="min-w-[640px] text-xs">
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="w-32">DNS Server</TableHead>
+                                      <TableHead className="w-24">Status</TableHead>
+                                      <TableHead className="w-28">Response Time</TableHead>
+                                      <TableHead className="w-32">Response Code</TableHead>
+                                      <TableHead className="w-32">IP Result</TableHead>
+                                      <TableHead>Error</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
                                     {sortedResults.map((result, idx) => (
-                                      <tr key={`${result.serverIp}-${idx}`} className="border-b">
-                                        <td className="p-2 font-mono text-xs">{result.serverIp}</td>
-                                        <td className="p-2">
-                                          <Badge variant={result.success ? "default" : "destructive"} className="text-xs">
+                                      <TableRow key={`${result.serverIp}-${idx}`}>
+                                        <TableCell className="font-mono text-xs">{result.serverIp}</TableCell>
+                                        <TableCell>
+                                          <Badge variant={result.success ? 'default' : 'destructive'} className="text-xs">
                                             {result.success ? 'Success' : 'Failed'}
                                           </Badge>
-                                        </td>
-                                        <td className="p-2 font-mono text-xs">
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
                                           {result.responseTime ? `${result.responseTime}ms` : '--'}
-                                        </td>
-                                        <td className="p-2 font-mono text-xs">
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
                                           {result.responseCode || '--'}
-                                        </td>
-                                        <td className="p-2 font-mono text-xs">
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
                                           {result.ipResult || '--'}
-                                        </td>
-                                        <td className="p-2 text-xs">
+                                        </TableCell>
+                                        <TableCell className="text-xs">
                                           {result.errorMessage || result.errorType || '--'}
-                                        </td>
-                                      </tr>
+                                        </TableCell>
+                                      </TableRow>
                                     ))}
-                                  </tbody>
-                                </table>
+                                  </TableBody>
+                                </Table>
                               </div>
                             </CollapsibleContent>
                           </Collapsible>
@@ -1044,44 +1075,46 @@ export function ResultsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {failureAnalysis.map((failure, idx) => (
-                <div key={failure.id} className={`p-4 rounded-lg border ${
-                  failure.consistentFailure ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800' :
-                  'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">{failure.domain}</h4>
-                    <Badge variant={failure.consistentFailure ? "destructive" : "secondary"}>
+              {failureAnalysis.map((failure) => (
+                <Alert
+                  key={failure.id}
+                  variant={failure.consistentFailure ? 'destructive' : 'warning'}
+                  className="space-y-2"
+                >
+                  <AlertTriangle className="h-5 w-5" />
+                  <div className="flex items-center justify-between gap-3">
+                    <AlertTitle>{failure.domain}</AlertTitle>
+                    <Badge variant={failure.consistentFailure ? 'destructive' : 'secondary'}>
                       {failure.failurePattern.replace(/_/g, ' ')}
                     </Badge>
                   </div>
-                  <div className="mt-2 text-sm">
+                  <AlertDescription className="space-y-2 text-sm">
                     {failure.consistentFailure ? (
-                      <div>
-                        <p className="text-red-700 dark:text-red-300">
-                          🚫 <strong>Consistent Failure:</strong> This domain fails across all DNS servers.
+                      <>
+                        <p>
+                          <span className="font-medium">Consistent failure:</span> This domain fails across every tested DNS server.
                         </p>
                         {failure.upstreamShouldResolve === false ? (
-                          <p className="text-orange-700 dark:text-orange-300 mt-1">
-                            💡 <strong>Root Cause:</strong> Domain appears to be blocked or filtered upstream.
+                          <p>
+                            <span className="font-medium">Root cause:</span> Domain appears to be blocked or filtered upstream.
                           </p>
                         ) : failure.upstreamShouldResolve === true ? (
-                          <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            🔍 <strong>Investigation Needed:</strong> Domain resolves upstream but fails locally. Check network configuration.
+                          <p>
+                            <span className="font-medium">Investigation needed:</span> Domain resolves upstream but fails locally. Review local network configuration.
                           </p>
                         ) : (
-                          <p className="text-gray-700 dark:text-gray-300 mt-1">
-                            ❓ <strong>Unclear:</strong> Unable to determine if this is a legitimate domain failure.
+                          <p>
+                            <span className="font-medium">Status:</span> Unable to determine whether this failure is expected.
                           </p>
                         )}
-                      </div>
+                      </>
                     ) : (
-                      <p className="text-yellow-700 dark:text-yellow-300">
-                        ⚠️ <strong>Server-Specific Issue:</strong> This domain fails on specific DNS servers only.
+                      <p>
+                        <span className="font-medium">Server-specific issue:</span> This domain fails only on certain DNS servers.
                       </p>
                     )}
-                  </div>
-                </div>
+                  </AlertDescription>
+                </Alert>
               ))}
             </div>
           </CardContent>
@@ -1099,17 +1132,20 @@ export function ResultsPage() {
         <CardContent>
           <div className="space-y-4">
             {results.results[0] && results.results[0].successRate > 0 && (
-              <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-                <h4 className="font-semibold text-green-800 dark:text-green-200">
-                  🏆 Switch to {results.results[0].serverName}
-                </h4>
-                <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                  {results.results[0].serverName} ({results.results[0].server}) achieved {results.results[0].avgResponseTime}ms average response time.
-                  {results.results.length > 1 && results.results[1].avgResponseTime > 0 &&
-                    ` This is ${Math.round(((results.results[1].avgResponseTime - results.results[0].avgResponseTime) / results.results[1].avgResponseTime) * 100)}% faster than the second-best server.`
-                  }
-                </p>
-              </div>
+              <Alert variant="success" className="space-y-2">
+                <CheckCircle className="h-5 w-5" />
+                <div>
+                  <AlertTitle>Switch to {results.results[0].serverName}</AlertTitle>
+                  <AlertDescription>
+                    <p>
+                      {results.results[0].serverName} ({results.results[0].server}) achieved {results.results[0].avgResponseTime}ms average response time.
+                      {results.results.length > 1 && results.results[1].avgResponseTime > 0 &&
+                        ` This is ${Math.round(((results.results[1].avgResponseTime - results.results[0].avgResponseTime) / results.results[1].avgResponseTime) * 100)}% faster than the second-best server.`
+                      }
+                    </p>
+                  </AlertDescription>
+                </div>
+              </Alert>
             )}
 
             {(() => {
@@ -1118,30 +1154,36 @@ export function ResultsPage() {
               if (bestCurrentDns) {
                 const currentDnsRank = results.results.findIndex(r => r.server === bestCurrentDns.server) + 1
                 return (
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <h4 className="font-semibold text-blue-800 dark:text-blue-200">
-                      📊 Your Current DNS Ranking
-                    </h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                      Your best current DNS ({bestCurrentDns.server}) ranks #{currentDnsRank} out of {results.results.length} tested servers with {bestCurrentDns.successRate.toFixed(1)}% reliability.
-                      {currentDnsRank === 1 ? ' Excellent performance!' : ' There\'s room for improvement.'}
-                    </p>
-                  </div>
+                  <Alert variant="info" className="space-y-2">
+                    <Activity className="h-5 w-5" />
+                    <div>
+                      <AlertTitle>Your current DNS ranking</AlertTitle>
+                      <AlertDescription>
+                        <p>
+                          Your best current DNS ({bestCurrentDns.server}) ranks #{currentDnsRank} out of {results.results.length} tested servers with {bestCurrentDns.successRate.toFixed(1)}% reliability.
+                          {currentDnsRank === 1 ? ' Excellent performance!' : ' There\'s room for improvement.'}
+                        </p>
+                      </AlertDescription>
+                    </div>
+                  </Alert>
                 )
               }
               return null
             })()}
 
             {results.results.some(r => r.successRate === 0) && (
-              <div className="p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
-                <h4 className="font-semibold text-red-800 dark:text-red-200">
-                  ⚠️ DNS Server Failures Detected
-                </h4>
-                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                  {results.results.filter(r => r.successRate === 0).map(r => r.serverName).join(', ')} failed to respond to DNS queries.
-                  These servers may be unreachable or misconfigured.
-                </p>
-              </div>
+              <Alert variant="destructive" className="space-y-2">
+                <AlertTriangle className="h-5 w-5" />
+                <div>
+                  <AlertTitle>DNS server failures detected</AlertTitle>
+                  <AlertDescription>
+                    <p>
+                      {results.results.filter(r => r.successRate === 0).map(r => r.serverName).join(', ')} failed to respond to DNS queries.
+                      These servers may be unreachable or misconfigured.
+                    </p>
+                  </AlertDescription>
+                </div>
+              </Alert>
             )}
           </div>
         </CardContent>
