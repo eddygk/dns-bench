@@ -4,6 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
 import { apiRequest, getBackendURL } from '@/lib/api'
 import { io, Socket } from 'socket.io-client'
 import {
@@ -322,26 +331,67 @@ export function BenchmarkPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {realTimeResults.map((server) => (
-                <div key={server.ip} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-2">
-                      {server.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                      {server.status === 'running' && <Timer className="h-4 w-4 text-blue-500 animate-spin" />}
-                      {server.status === 'pending' && <AlertCircle className="h-4 w-4 text-gray-400" />}
-                      {server.status === 'failed' && <XCircle className="h-4 w-4 text-red-500" />}
-                      <span className="font-medium">{server.name}</span>
-                      <span className="text-sm text-muted-foreground">({server.ip})</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm">{server.tests}</span>
-                    <span className="font-mono text-sm">{server.time > 0 ? `${server.time.toFixed(1)}ms` : '--'}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ScrollArea className="max-h-[340px]">
+              <Table className="min-w-[520px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Server</TableHead>
+                    <TableHead className="w-28">Tests</TableHead>
+                    <TableHead className="w-28">Avg Time</TableHead>
+                    <TableHead className="w-32">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {realTimeResults.map((server) => {
+                    const statusIcon = {
+                      success: <CheckCircle className="h-4 w-4 text-green-500" />,
+                      running: <Timer className="h-4 w-4 text-blue-500 animate-spin" />,
+                      pending: <AlertCircle className="h-4 w-4 text-muted-foreground" />,
+                      failed: <XCircle className="h-4 w-4 text-red-500" />
+                    }[server.status]
+
+                    const statusLabel =
+                      server.status === 'success'
+                        ? 'Completed'
+                        : server.status === 'running'
+                          ? 'Running'
+                          : server.status === 'pending'
+                            ? 'Pending'
+                            : 'Failed'
+
+                    return (
+                      <TableRow
+                        key={server.ip}
+                        className={server.status === 'running' ? 'bg-muted/50' : undefined}
+                      >
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{server.name}</span>
+                            <span className="text-xs text-muted-foreground">{server.ip}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {server.tests}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-mono text-sm">
+                            {server.time > 0 ? `${server.time.toFixed(1)}ms` : '--'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {statusIcon}
+                            <span className="text-sm capitalize">{statusLabel}</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </ScrollArea>
           </CardContent>
         </Card>
       )}
@@ -358,29 +408,51 @@ export function BenchmarkPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {activityLog.map((test, index) => (
-                <div key={index} className="flex items-center space-x-2 text-sm">
-                  {test.status === 'success' ? (
-                    <CheckCircle className="h-3 w-3 text-green-500" />
+            <ScrollArea className="h-48">
+              <Table className="min-w-[480px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Domain</TableHead>
+                    <TableHead>Server</TableHead>
+                    <TableHead className="w-28">Status</TableHead>
+                    <TableHead className="w-24 text-right">Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activityLog.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
+                        No activity yet...
+                      </TableCell>
+                    </TableRow>
                   ) : (
-                    <XCircle className="h-3 w-3 text-red-500" />
+                    activityLog.map((test, index) => (
+                      <TableRow key={`${test.domain}-${test.server}-${index}`}>
+                        <TableCell className="font-medium">{test.domain}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">{test.server}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {test.status === 'success' ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className="text-sm capitalize">{test.status}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs">
+                          {test.status === 'success'
+                            ? test.time !== null
+                              ? `${test.time.toFixed(1)}ms`
+                              : 'Testing...'
+                            : 'Timeout'}
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
-                  <span>
-                    {test.domain} @ {test.server}:
-                    {test.status === 'success'
-                      ? (test.time !== null ? ` ${test.time.toFixed(1)}ms` : ' Testing...')
-                      : ' Timeout'
-                    }
-                  </span>
-                </div>
-              ))}
-              {activityLog.length === 0 && (
-                <div className="text-sm text-muted-foreground text-center py-4">
-                  No activity yet...
-                </div>
-              )}
-            </div>
+                </TableBody>
+              </Table>
+            </ScrollArea>
           </CardContent>
         </Card>
       )}
