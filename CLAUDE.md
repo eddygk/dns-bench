@@ -72,7 +72,7 @@ Based on the gap analysis, prioritize implementation in this order:
 - **Install**: `cd /home/ansible/dns-bench/web-app/client && npm install socket.io-client`
 - **Replace**: `/web-app/client/src/pages/benchmark.tsx:42` - change `new WebSocket(wsUrl)` to Socket.IO client
 - **Backend**: Already uses Socket.IO server correctly in `/web-app/server/src/index.ts:40`
-- **Test URL**: http://10.10.20.107:3000/benchmark
+- **Test URL**: http://YOUR_HOST_IP:3000/benchmark
 
 ### 📍 CURRENT STATE
 - **DNS Configuration**: Manual configuration via Settings page (with auto-detection fallback)
@@ -124,6 +124,9 @@ Based on the gap analysis, prioritize implementation in this order:
 - ✅ **Expanded Domain List**: 72 comprehensive domains covering global sites, services, news, e-commerce, tech, international, educational, and financial sectors (vs original 20)
 - ✅ **Enhanced UI Pagination**: Professional shadcn/ui pagination components for large result sets
 - ✅ **Optimized Result Display**: Smart pagination limits for Raw Diagnostics (10 per page) and improved per-server failure badges (12 domains shown)
+- ✅ **Public DNS Server Visibility**: Fixed loading state and improved user understanding of default server configuration
+- ✅ **Settings Page UX**: Clear documentation of default providers (Cloudflare, Google, Quad9 enabled) with loading feedback
+- ✅ **JSX Fragment Fix**: Resolved React conditional rendering syntax error for proper public DNS server display
 
 ## Project Overview
 
@@ -240,10 +243,10 @@ localhost:6379
 ### CORS Network Access Management
 - **Simplified Security Model**: Removed complex auto-detection that violated Docker isolation principles
 - **Always-On Localhost**: Localhost access permanently enabled for development (no toggle confusion)
-- **Environment-Based Host IP**: Uses Docker environment variables (HOST_IP) for LAN access configuration
+- **Manual Host IP Configuration**: LAN access requires manual CORS configuration (auto-detection removed)
 - **Real-Time Status Display**: Settings page shows current access configuration with enabled/disabled states
 - **Flexible Custom Origins**: Single interface for adding specific hostnames and URLs
-- **LAN Access**: Clear display of actual URLs clients use: `http://10.10.20.107:3000`
+- **LAN Access**: Clear display of actual URLs clients use: `http://YOUR_HOST_IP:3000`
 
 ## Port Management & Development Guidelines
 

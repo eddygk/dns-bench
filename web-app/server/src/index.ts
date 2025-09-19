@@ -389,8 +389,8 @@ app.post('/api/settings/detect-hostname', async (req, res) => {
 app.get('/api/server-info', async (req, res) => {
   try {
     const hostname = await settingsService.detectHostname()
-    const hostIP = await settingsService.getDockerHostIP()
-    logger.info({ hostIP, env: { HOST_IP: process.env.HOST_IP, DOCKER_HOST_IP: process.env.DOCKER_HOST_IP }}, 'Server info - Host IP detection')
+    const hostIP = null // Host IP auto-detection disabled
+    logger.info('Server info - Host IP detection disabled')
     const settings = await settingsService.loadSettings()
 
     res.json({
@@ -482,6 +482,52 @@ app.put('/api/settings/test-config', async (req, res) => {
       logger.error({ error }, 'Failed to save test configuration')
       res.status(500).json({ error: 'Failed to save test configuration' })
     }
+  }
+})
+
+// Domain list configuration endpoints
+app.get('/api/settings/domain-list', async (req, res) => {
+  try {
+    const config = await settingsService.loadDomainList()
+    res.json({ config })
+  } catch (error) {
+    logger.error({ error }, 'Failed to get domain list configuration')
+    res.status(500).json({ error: 'Failed to get domain list configuration' })
+  }
+})
+
+app.put('/api/settings/domain-list', async (req, res) => {
+  try {
+    const domainListSchema = z.object({
+      domains: z.array(z.string().min(1).max(253))
+        .min(1, 'Must have at least 1 domain')
+        .max(1000, 'Cannot have more than 1000 domains'),
+      lastModified: z.date().optional()
+    })
+
+    const config = domainListSchema.parse(req.body)
+    const savedConfig = await settingsService.saveDomainList({
+      domains: config.domains,
+      lastModified: new Date()
+    })
+    res.json({ config: savedConfig })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid domain list configuration', details: error.errors })
+    } else {
+      logger.error({ error }, 'Failed to save domain list configuration')
+      res.status(500).json({ error: 'Failed to save domain list configuration' })
+    }
+  }
+})
+
+app.post('/api/settings/domain-list/reset', async (req, res) => {
+  try {
+    const config = await settingsService.resetDomainListToDefaults()
+    res.json({ config })
+  } catch (error) {
+    logger.error({ error }, 'Failed to reset domain list to defaults')
+    res.status(500).json({ error: 'Failed to reset domain list to defaults' })
   }
 })
 

@@ -334,8 +334,15 @@ export class DNSBenchmarkService {
     
     // Determine domains to test using configurable parameters
     let domainCount = 10 // default fallback
+    let availableDomains = this.defaultDomains // fallback to hardcoded list
+
     if (this.settingsService) {
       try {
+        // Load custom domain list
+        const domainListConfig = await this.settingsService.loadDomainList()
+        availableDomains = domainListConfig.domains
+
+        // Load test configuration for domain counts
         const testConfig = await this.settingsService.loadTestConfig()
         switch (testType) {
           case 'quick':
@@ -349,14 +356,14 @@ export class DNSBenchmarkService {
             break
         }
       } catch (error) {
-        this.logger.debug({ error }, 'Failed to load test configuration, using defaults')
+        this.logger.debug({ error }, 'Failed to load domain list or test configuration, using defaults')
         domainCount = testType === 'quick' ? 10 : 20
       }
     } else {
       domainCount = testType === 'quick' ? 10 : 20
     }
 
-    const domainsToTest = domains || this.defaultDomains.slice(0, domainCount)
+    const domainsToTest = domains || availableDomains.slice(0, domainCount)
     
     // Initialize test status
     const testStatus: TestStatus = {

@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Textarea } from '@/components/ui/textarea'
 import { apiRequest } from '@/lib/api'
-import { Settings, Bell, Palette, Database, Globe, RefreshCw, Plus, X, Trash2, Server } from 'lucide-react'
+import { Settings, Bell, Palette, Database, Globe, Plus, X, Trash2, Server } from 'lucide-react'
 
 interface CORSSettings {
   allowIPAccess: boolean
@@ -66,6 +67,11 @@ interface TestConfiguration {
   }
 }
 
+interface DomainListConfig {
+  domains: string[]
+  lastModified: Date
+}
+
 export function SettingsPage() {
   const queryClient = useQueryClient()
   const [corsSettings, setCorsSettings] = useState<CORSSettings>({
@@ -85,16 +91,21 @@ export function SettingsPage() {
     performance: { maxConcurrentServers: 3, queryTimeout: 2000, maxRetries: 1, rateLimitMs: 100 },
     analysis: { detectRedirection: true, detectMalwareBlocking: false, testDNSSEC: false, minReliabilityThreshold: 95 }
   })
+  const [domainListConfig, setDomainListConfig] = useState<DomainListConfig>({
+    domains: [],
+    lastModified: new Date()
+  })
+  const [domainListText, setDomainListText] = useState('')
   // isLoading now comes from React Query below
   const [isSaving, setIsSaving] = useState(false)
-  const [isDetectingHostname, setIsDetectingHostname] = useState(false)
   const [isSavingDNS, setIsSavingDNS] = useState(false)
   const [isSavingPublicDNS, setIsSavingPublicDNS] = useState(false)
   const [isSavingTestConfig, setIsSavingTestConfig] = useState(false)
+  const [isSavingDomainList, setIsSavingDomainList] = useState(false)
   const [newOrigin, setNewOrigin] = useState('')
 
   // Load settings using React Query for automatic refetching
-  const { data: settingsData, isLoading: isLoadingSettings } = useQuery({
+  const { data: settingsData } = useQuery({
     queryKey: ['settings'],
     queryFn: async () => {
       const response = await apiRequest('/api/settings')
@@ -147,6 +158,17 @@ export function SettingsPage() {
     refetchOnWindowFocus: true
   })
 
+  const { data: domainListData } = useQuery({
+    queryKey: ['domain-list-config'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/settings/domain-list')
+      const data = await response.json()
+      return data.config
+    },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true
+  })
+
   // Update state when query data changes (React Query v5 compatible)
   useEffect(() => {
     if (settingsData?.settings?.cors) {
@@ -184,6 +206,13 @@ export function SettingsPage() {
     }
   }, [testConfigData])
 
+  useEffect(() => {
+    if (domainListData) {
+      setDomainListConfig(domainListData)
+      setDomainListText(domainListData.domains.join('\n'))
+    }
+  }, [domainListData])
+
   const saveCorsSettings = async () => {
     setIsSaving(true)
     try {
@@ -207,24 +236,6 @@ export function SettingsPage() {
     }
   }
 
-  const detectHostname = async () => {
-    setIsDetectingHostname(true)
-    try {
-      // Use the server-info endpoint to get both hostname and host IP
-      const response = await apiRequest('/api/server-info')
-      const data = await response.json()
-
-      setCorsSettings(prev => ({
-        ...prev,
-        detectedHostname: data.detectedHostname || data.hostname,
-        detectedHostIP: data.detectedHostIP || data.hostIP
-      }))
-    } catch (error) {
-      console.error('Failed to detect hostname and host IP:', error)
-    } finally {
-      setIsDetectingHostname(false)
-    }
-  }
 
   const addCustomOrigin = () => {
     if (newOrigin.trim() && !corsSettings.customOrigins.includes(newOrigin.trim())) {
@@ -303,6 +314,58 @@ export function SettingsPage() {
       console.error('Failed to save test configuration:', error)
     } finally {
       setIsSavingTestConfig(false)
+    }
+  }
+
+  const saveDomainList = async () => {
+    setIsSavingDomainList(true)
+    try {
+      // Convert textarea content to domain array, filtering out empty lines
+      const domains = domainListText
+        .split('\n')
+        .map(domain => domain.trim())
+        .filter(domain => domain.length > 0)
+
+      const config = {
+        domains,
+        lastModified: new Date()
+      }
+
+      const response = await apiRequest('/api/settings/domain-list', {
+        method: 'PUT',
+        body: JSON.stringify(config),
+      })
+
+      if (response.ok) {
+        // Invalidate and refetch the query instead of manually updating state
+        queryClient.invalidateQueries({ queryKey: ['domain-list-config'] })
+      } else {
+        throw new Error('Failed to save domain list configuration')
+      }
+    } catch (error) {
+      console.error('Failed to save domain list configuration:', error)
+    } finally {
+      setIsSavingDomainList(false)
+    }
+  }
+
+  const resetDomainListToDefaults = async () => {
+    setIsSavingDomainList(true)
+    try {
+      const response = await apiRequest('/api/settings/domain-list/reset', {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        // Invalidate and refetch the query instead of manually updating state
+        queryClient.invalidateQueries({ queryKey: ['domain-list-config'] })
+      } else {
+        throw new Error('Failed to reset domain list to defaults')
+      }
+    } catch (error) {
+      console.error('Failed to reset domain list to defaults:', error)
+    } finally {
+      setIsSavingDomainList(false)
     }
   }
 
@@ -480,9 +543,6 @@ export function SettingsPage() {
                       </div>
                     )}
 
-                    <div className="text-xs text-blue-600 dark:text-blue-400 pt-2 border-t border-blue-200 dark:border-blue-800">
-                      <p><strong>Note:</strong> IP address configured via Docker environment (HOST_IP={corsSettings.detectedHostIP})</p>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -631,12 +691,18 @@ export function SettingsPage() {
             <CardTitle>Public DNS Servers</CardTitle>
           </div>
           <CardDescription>
-            Configure public DNS servers used for benchmarking (maximum 20)
+            Configure public DNS servers used for benchmarking. Default providers (Cloudflare, Google, Quad9, OpenDNS, Level3) are pre-configured. You can enable/disable any server or add custom ones (maximum 20 total).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-4">
-            {publicDNSConfig.servers.map((server) => (
+          {publicDNSConfig.servers.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground">
+              <div className="animate-pulse">Loading DNS server configuration...</div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                {publicDNSConfig.servers.map((server) => (
               <div key={server.id} className="flex items-center space-x-4 p-4 border rounded-lg">
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -677,27 +743,29 @@ export function SettingsPage() {
                 )}
               </div>
             ))}
-          </div>
+            </div>
 
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={addPublicDNSServer}
-              disabled={publicDNSConfig.servers.length >= 20}
-              className="flex items-center space-x-2"
-            >
+            <div className="flex items-center justify-between">
+              <Button
+                variant="outline"
+                onClick={addPublicDNSServer}
+                disabled={publicDNSConfig.servers.length >= 20}
+                className="flex items-center space-x-2"
+              >
               <Plus className="h-4 w-4" />
               <span>Add Custom DNS Server</span>
             </Button>
             <Badge variant="secondary">
               {publicDNSConfig.servers.filter(s => s.enabled).length}/{publicDNSConfig.servers.length} enabled
             </Badge>
-          </div>
+            </div>
+            </>
+          )}
 
           <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Note:</strong> Only enabled public DNS servers will be included in benchmark tests.
-              All server details (provider, name, IP) are fully customizable. Custom servers can be deleted.
+              <strong>Note:</strong> Default providers include Cloudflare, Google, and Quad9 (enabled), plus OpenDNS and Level3 (disabled).
+              Only enabled servers are included in benchmark tests. All server details are fully customizable and custom servers can be deleted.
             </p>
           </div>
 
@@ -949,6 +1017,88 @@ export function SettingsPage() {
             <Button onClick={saveTestConfig} disabled={isSavingTestConfig}>
               {isSavingTestConfig ? 'Saving...' : 'Save Test Configuration'}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Domain List Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <Globe className="h-5 w-5" />
+            <CardTitle>Domain List Management</CardTitle>
+          </div>
+          <CardDescription>
+            Customize the list of domains used for DNS benchmarking tests
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="domain-list">Domain List</Label>
+              <p className="text-sm text-muted-foreground">
+                Enter one domain per line. Invalid domains will be filtered out automatically.
+              </p>
+              <Textarea
+                id="domain-list"
+                placeholder="google.com&#10;youtube.com&#10;facebook.com&#10;..."
+                value={domainListText}
+                onChange={(e) => setDomainListText(e.target.value)}
+                className="min-h-[300px] font-mono text-sm"
+                rows={15}
+              />
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>
+                  {domainListText.split('\n').filter(d => d.trim().length > 0).length} domains
+                  {domainListConfig.lastModified && (
+                    <span className="ml-2">
+                      • Last modified: {new Date(domainListConfig.lastModified).toLocaleDateString()}
+                    </span>
+                  )}
+                </span>
+                <span>Maximum: 1000 domains</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={resetDomainListToDefaults}
+                disabled={isSavingDomainList}
+              >
+                Reset to Defaults
+              </Button>
+              <div className="space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Export current domain list as text file
+                    const blob = new Blob([domainListText], { type: 'text/plain' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'domain-list.txt'
+                    document.body.appendChild(a)
+                    a.click()
+                    document.body.removeChild(a)
+                    URL.revokeObjectURL(url)
+                  }}
+                  disabled={isSavingDomainList}
+                >
+                  Export List
+                </Button>
+                <Button onClick={saveDomainList} disabled={isSavingDomainList}>
+                  {isSavingDomainList ? 'Saving...' : 'Save Domain List'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Note:</strong> Changes to the domain list will affect all future benchmark tests.
+              The number of domains tested depends on your test configuration (Quick: {testConfig.domainCounts.quick}, Full: {testConfig.domainCounts.full}, Custom: {testConfig.domainCounts.custom}).
+            </p>
           </div>
         </CardContent>
       </Card>

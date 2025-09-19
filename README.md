@@ -199,9 +199,9 @@ Real-time updates during benchmarking:
 
 ### For Manual Installation
 - Node.js 18+ with npm
-- Linux with `dig` command (bind-tools/dnsutils)
 - SQLite3
 - Redis (optional, for caching)
+- No external DNS tools required (uses Node.js native DNS resolver)
 
 ## 🔄 Development
 
@@ -236,7 +236,7 @@ docker logs -f dns-bench-server-1
   - Socket.IO for WebSocket connections
   - SQLite for data persistence
   - Pino for logging
-  - DNS testing via `dig` command
+  - DNS testing via Node.js native `dns.Resolver()`
 
 - **Infrastructure**:
   - Docker multi-container setup
@@ -255,7 +255,7 @@ PORT=3001
 NODE_ENV=development
 DB_PATH=/app/data/dns-bench.db
 CORS_ORIGIN=http://localhost:3000
-HOST_IP=<your-lan-ip>  # For LAN access
+HOST_IP=<your-lan-ip>  # Manual configuration only (auto-detection removed)
 ```
 
 ## 🐛 Troubleshooting
@@ -284,7 +284,7 @@ If accessing from another device on your network:
 
 ### DNS Testing Issues
 
-- Ensure `dig` command is available in backend container
+- DNS resolution uses Node.js native resolver (no external tools needed)
 - Check network connectivity: `docker exec dns-bench-server-1 ping 8.8.8.8`
 - Verify DNS server IPs in Settings are correct
 - Review backend logs: `docker logs dns-bench-server-1`
@@ -349,6 +349,18 @@ make build
 # Restart services
 make dev
 ```
+
+## 🧪 Testing
+
+A comprehensive testing implementation guide is available in [`docs/TESTING_IMPLEMENTATION_BRIEF.md`](docs/TESTING_IMPLEMENTATION_BRIEF.md). The testing strategy includes:
+
+- **Unit Tests**: Real DNS testing with Node.js `dns.Resolver()` against Google DNS
+- **Integration Tests**: Full API and database testing
+- **E2E Tests**: Playwright automation for critical user journeys
+- **Performance Tests**: Load testing and DNS benchmarking validation
+- **CI/CD**: GitHub Actions pipeline with fast PR testing (<8 minutes)
+
+The guide provides complete implementation details, code examples, and CI configuration for another developer to implement comprehensive test coverage.
 
 ## 🤝 Contributing
 

@@ -281,3 +281,17 @@ export interface UpdateTestConfigRequest {
 export interface GetTestConfigResponse {
   config: TestConfiguration
 }
+
+// Domain List Configuration types
+export interface DomainListConfig {
+  domains: string[]
+  lastModified: Date
+}
+
+export interface UpdateDomainListRequest {
+  config: DomainListConfig
+}
+
+export interface GetDomainListResponse {
+  config: DomainListConfig
+}

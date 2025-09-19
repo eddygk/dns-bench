@@ -4,7 +4,7 @@ import dns from 'dns'
 import fs from 'fs/promises'
 import path from 'path'
 import type { Logger } from 'pino'
-import type { CORSSettings, ServerSettings, LocalDNSConfig, PublicDNSConfig, PublicDNSServer, TestConfiguration } from '@dns-bench/shared'
+import type { CORSSettings, ServerSettings, LocalDNSConfig, PublicDNSConfig, PublicDNSServer, TestConfiguration, DomainListConfig } from '@dns-bench/shared'
 
 const reverseLookup = promisify(dns.reverse)
 
@@ -83,23 +83,16 @@ export class SettingsService {
       await this.saveSettings(this.defaultSettings)
     }
 
-    // Auto-detect hostname and host IP if enabled
+    // Auto-detect hostname if enabled (host IP auto-detection removed)
     const settings = await this.loadSettings()
     if (settings.cors.autoDetectHostname) {
       const hostname = await this.detectHostname()
-      const hostIP = await this.getDockerHostIP()
 
       let updated = false
       if (hostname && hostname !== settings.cors.detectedHostname) {
         settings.cors.detectedHostname = hostname
         updated = true
         this.logger.info({ hostname }, 'Auto-detected hostname')
-      }
-
-      if (hostIP && hostIP !== settings.cors.detectedHostIP) {
-        settings.cors.detectedHostIP = hostIP
-        updated = true
-        this.logger.info({ hostIP }, 'Auto-detected host IP')
       }
 
       if (updated) {
@@ -164,14 +157,7 @@ export class SettingsService {
         return fqdn || systemHostname
       }
 
-      // Method 2: Try to detect host IP and do reverse lookup
-      const hostIP = await this.getDockerHostIP()
-      if (hostIP) {
-        const hostname = await this.reverseResolveIP(hostIP)
-        if (hostname && hostname !== hostIP) {
-          return hostname
-        }
-      }
+      // Method 2: Host IP detection removed (unreliable in Docker)
 
       // Method 3: Try container IP as fallback
       const containerIP = await this.getLocalIP()
@@ -189,274 +175,18 @@ export class SettingsService {
     }
   }
 
-  async getDockerHostIP(): Promise<string | null> {
-    // Simple approach: Use environment variable set by Docker Compose
-    // This follows Docker best practices instead of trying to auto-detect
-    const hostIP = process.env.HOST_IP || process.env.DOCKER_HOST_IP
-
-    if (hostIP && this.isValidIP(hostIP)) {
-      this.logger.debug({ hostIP }, 'Using configured host IP from environment')
-      return hostIP
-    }
-
-    this.logger.debug('No valid host IP configured in environment variables')
-    return null
-  }
 
   private isValidIP(ip: string): boolean {
     const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
     return ipRegex.test(ip)
   }
 
-  private async getHostNetworkIP(): Promise<string | null> {
-    return new Promise((resolve) => {
-      // Try to find non-Docker, non-loopback interfaces
-      const child = spawn('ip', ['addr', 'show'], { stdio: 'pipe' })
-      let output = ''
 
-      child.stdout.on('data', (data) => {
-        output += data.toString()
-      })
 
-      child.on('close', (code) => {
-        if (code === 0) {
-          // Look for interfaces that are not Docker-related
-          const lines = output.split('\n')
-          const ips: string[] = []
 
-          for (const line of lines) {
-            // Skip Docker interfaces
-            if (line.includes('docker') || line.includes('br-')) {
-              continue
-            }
 
-            // Look for inet addresses
-            const match = line.match(/inet (\d+\.\d+\.\d+\.\d+)\/\d+/)
-            if (match) {
-              const ip = match[1]
-              // Skip loopback and Docker subnets
-              if (!ip.startsWith('127.') &&
-                  !ip.startsWith('172.17.') &&
-                  !ip.startsWith('172.18.') &&
-                  !ip.startsWith('172.19.') &&
-                  !ip.startsWith('172.20.')) {
-                ips.push(ip)
-              }
-            }
-          }
 
-          // Prefer 10.x.x.x or 192.168.x.x addresses (common LAN ranges)
-          for (const ip of ips) {
-            if (ip.startsWith('10.') || ip.startsWith('192.168.')) {
-              resolve(ip)
-              return
-            }
-          }
 
-          // Return any non-loopback IP
-          resolve(ips.length > 0 ? ips[0] : null)
-        } else {
-          resolve(null)
-        }
-      })
-
-      child.on('error', () => {
-        resolve(null)
-      })
-    })
-  }
-
-  private async getContainerHostIP(): Promise<string | null> {
-    // Try to examine /proc/net/route to find the host's IP
-    try {
-      const fs = await import('fs/promises')
-
-      // Method 1: Check if we can access host's network info via /proc/1/net/route
-      try {
-        const hostRouteContent = await fs.readFile('/proc/1/net/route', 'utf-8')
-        const ip = this.parseRouteForHostIP(hostRouteContent)
-        if (ip) return ip
-      } catch (error) {
-        // /proc/1/net/route might not be accessible in container
-      }
-
-      // Method 2: Try to resolve via DNS the hostname from container perspective
-      const hostname = await this.getSystemHostname()
-      if (hostname && hostname !== 'localhost') {
-        try {
-          const addresses = await this.resolveHostname(hostname)
-          for (const addr of addresses) {
-            if (this.isValidIP(addr) && !addr.startsWith('127.') && !addr.startsWith('172.17.')) {
-              return addr
-            }
-          }
-        } catch (error) {
-          // DNS resolution failed
-        }
-      }
-
-      return null
-    } catch (error) {
-      return null
-    }
-  }
-
-  private parseRouteForHostIP(routeContent: string): string | null {
-    const lines = routeContent.split('\n')
-
-    for (const line of lines) {
-      const parts = line.split('\t')
-      if (parts.length >= 3) {
-        const destination = parts[1]
-        const gateway = parts[2]
-
-        // Look for default route (destination 00000000)
-        if (destination === '00000000' && gateway !== '00000000') {
-          const ip = this.hexToIP(gateway)
-          if (ip && this.isValidIP(ip) && !ip.startsWith('172.17.') && !ip.startsWith('127.')) {
-            return ip
-          }
-        }
-      }
-    }
-
-    return null
-  }
-
-  private async resolveHostname(hostname: string): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-      const child = spawn('nslookup', [hostname], { stdio: 'pipe' })
-      let output = ''
-
-      child.stdout.on('data', (data) => {
-        output += data.toString()
-      })
-
-      child.on('close', (code) => {
-        if (code === 0) {
-          const addresses: string[] = []
-          const lines = output.split('\n')
-
-          for (const line of lines) {
-            const match = line.match(/Address:\s*(\d+\.\d+\.\d+\.\d+)/)
-            if (match) {
-              addresses.push(match[1])
-            }
-          }
-
-          resolve(addresses)
-        } else {
-          reject(new Error('nslookup failed'))
-        }
-      })
-
-      child.on('error', (error) => {
-        reject(error)
-      })
-    })
-  }
-
-  private async getDockerGatewayIP(): Promise<string | null> {
-    return new Promise((resolve) => {
-      const child = spawn('ip', ['route', 'show', 'default'], { stdio: 'pipe' })
-      let output = ''
-
-      child.stdout.on('data', (data) => {
-        output += data.toString()
-      })
-
-      child.on('close', (code) => {
-        if (code === 0) {
-          // Parse default route: "default via 172.17.0.1 dev eth0"
-          const match = output.match(/default via (\d+\.\d+\.\d+\.\d+)/)
-          if (match) {
-            const gatewayIP = match[1]
-            // For Docker, the gateway is often the host's IP on the docker network
-            // But we need the actual host IP that external clients use
-            resolve(gatewayIP)
-            return
-          }
-        }
-        resolve(null)
-      })
-
-      child.on('error', () => {
-        resolve(null)
-      })
-    })
-  }
-
-  private async getHostIPViaRoute(): Promise<string | null> {
-    return new Promise((resolve) => {
-      // Try to find the route to a well-known external IP
-      const child = spawn('ip', ['route', 'get', '8.8.8.8'], { stdio: 'pipe' })
-      let output = ''
-
-      child.stdout.on('data', (data) => {
-        output += data.toString()
-      })
-
-      child.on('close', (code) => {
-        if (code === 0) {
-          // Look for the source IP in the route output
-          const srcMatch = output.match(/src\s+(\d+\.\d+\.\d+\.\d+)/)
-          if (srcMatch) {
-            const sourceIP = srcMatch[1]
-            // If this is not a Docker internal IP, it might be the host IP
-            if (!sourceIP.startsWith('172.17.') && !sourceIP.startsWith('172.18.')) {
-              resolve(sourceIP)
-              return
-            }
-          }
-
-          // Look for the gateway IP which might be the host
-          const viaMatch = output.match(/via\s+(\d+\.\d+\.\d+\.\d+)/)
-          if (viaMatch) {
-            resolve(viaMatch[1])
-            return
-          }
-        }
-        resolve(null)
-      })
-
-      child.on('error', () => {
-        resolve(null)
-      })
-    })
-  }
-
-  private async getHostIPFromEnvironment(): Promise<string | null> {
-    // Check if Docker provided host information via environment variables
-    const hostIP = process.env.DOCKER_HOST_IP || process.env.HOST_IP
-    if (hostIP && this.isValidIP(hostIP)) {
-      return hostIP
-    }
-
-    // Try to detect from /proc/net/route (Linux specific)
-    try {
-      const fs = await import('fs/promises')
-      const routeContent = await fs.readFile('/proc/net/route', 'utf-8')
-      const lines = routeContent.split('\n')
-
-      for (const line of lines) {
-        const parts = line.split('\t')
-        if (parts.length >= 3 && parts[1] === '00000000') { // Default route
-          const gatewayHex = parts[2]
-          if (gatewayHex && gatewayHex !== '00000000') {
-            // Convert hex to IP
-            const ip = this.hexToIP(gatewayHex)
-            if (ip && this.isValidIP(ip)) {
-              return ip
-            }
-          }
-        }
-      }
-    } catch (error) {
-      // Ignore errors reading /proc/net/route
-    }
-
-    return null
-  }
 
   private hexToIP(hex: string): string | null {
     try {
@@ -943,6 +673,209 @@ export class SettingsService {
 
     if (config.analysis.minReliabilityThreshold < 50 || config.analysis.minReliabilityThreshold > 100) {
       throw new Error('Minimum reliability threshold must be between 50% and 100%')
+    }
+  }
+
+  // Domain List Management
+  private domainListFile = path.join(process.cwd(), 'domain-list.json')
+  private defaultDomainList = [
+    // Top Global Sites (Most likely to be cached)
+    'google.com',
+    'youtube.com',
+    'facebook.com',
+    'instagram.com',
+    'twitter.com',
+    'linkedin.com',
+    'tiktok.com',
+    'amazon.com',
+    'microsoft.com',
+    'apple.com',
+    'netflix.com',
+    'wikipedia.org',
+    'reddit.com',
+    'github.com',
+    'stackoverflow.com',
+
+    // Major Search Engines & Services
+    'bing.com',
+    'yahoo.com',
+    'duckduckgo.com',
+    'gmail.com',
+    'outlook.com',
+    'dropbox.com',
+    'zoom.us',
+    'slack.com',
+    'discord.com',
+    'whatsapp.com',
+
+    // Major News & Media
+    'cnn.com',
+    'bbc.com',
+    'nytimes.com',
+    'theguardian.com',
+    'reuters.com',
+    'espn.com',
+    'twitch.tv',
+    'spotify.com',
+    'hulu.com',
+    'disney.com',
+
+    // E-commerce & Shopping
+    'ebay.com',
+    'etsy.com',
+    'walmart.com',
+    'target.com',
+    'shopify.com',
+    'paypal.com',
+    'stripe.com',
+
+    // Technology & Cloud Services
+    'cloudflare.com',
+    'aws.amazon.com',
+    'azure.microsoft.com',
+    'heroku.com',
+    'digitalocean.com',
+    'vercel.com',
+    'netlify.com',
+    'firebase.google.com',
+
+    // International & Regional
+    'baidu.com',
+    'yandex.ru',
+    'alibaba.com',
+    'tencent.com',
+    'vk.com',
+    'naver.com',
+    'yahoo.co.jp',
+    'rakuten.com',
+
+    // Educational & Government
+    'mit.edu',
+    'stanford.edu',
+    'harvard.edu',
+    'berkeley.edu',
+    'gov.uk',
+    'canada.ca',
+
+    // Financial Services
+    'chase.com',
+    'bankofamerica.com',
+    'wells.com',
+    'americanexpress.com',
+    'visa.com',
+    'mastercard.com',
+    'coinbase.com',
+
+    // Additional Popular Services
+    'wordpress.com',
+    'medium.com',
+    'tumblr.com',
+    'pinterest.com',
+    'snapchat.com'
+  ]
+
+  async loadDomainList(): Promise<DomainListConfig> {
+    try {
+      const fileContents = await fs.readFile(this.domainListFile, 'utf-8')
+      const data = JSON.parse(fileContents)
+      return {
+        domains: data.domains || this.defaultDomainList,
+        lastModified: new Date(data.lastModified || Date.now())
+      }
+    } catch (error) {
+      this.logger.debug({ error }, 'Domain list file not found, using defaults')
+      return {
+        domains: [...this.defaultDomainList],
+        lastModified: new Date()
+      }
+    }
+  }
+
+  async saveDomainList(config: DomainListConfig): Promise<DomainListConfig> {
+    try {
+      this.validateDomainList(config)
+
+      const dataToSave = {
+        domains: config.domains,
+        lastModified: new Date().toISOString()
+      }
+
+      await fs.writeFile(this.domainListFile, JSON.stringify(dataToSave, null, 2))
+
+      return {
+        domains: config.domains,
+        lastModified: new Date(dataToSave.lastModified)
+      }
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to save domain list configuration')
+      throw error
+    }
+  }
+
+  async resetDomainListToDefaults(): Promise<DomainListConfig> {
+    const defaultConfig: DomainListConfig = {
+      domains: [...this.defaultDomainList],
+      lastModified: new Date()
+    }
+
+    return await this.saveDomainList(defaultConfig)
+  }
+
+  private validateDomainList(config: DomainListConfig): void {
+    if (!config.domains || !Array.isArray(config.domains)) {
+      throw new Error('Domain list must be an array')
+    }
+
+    if (config.domains.length < 1) {
+      throw new Error('Domain list must contain at least 1 domain')
+    }
+
+    if (config.domains.length > 1000) {
+      throw new Error('Domain list cannot contain more than 1000 domains')
+    }
+
+    // Validate each domain
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/
+    const invalidDomains: string[] = []
+    const duplicates: string[] = []
+    const seen = new Set<string>()
+
+    for (const domain of config.domains) {
+      if (typeof domain !== 'string') {
+        invalidDomains.push(`Invalid type: ${typeof domain}`)
+        continue
+      }
+
+      const trimmedDomain = domain.trim().toLowerCase()
+
+      if (trimmedDomain.length === 0) {
+        invalidDomains.push('Empty domain')
+        continue
+      }
+
+      if (trimmedDomain.length > 253) {
+        invalidDomains.push(`${domain} (too long)`)
+        continue
+      }
+
+      if (!domainRegex.test(trimmedDomain)) {
+        invalidDomains.push(domain)
+        continue
+      }
+
+      if (seen.has(trimmedDomain)) {
+        duplicates.push(domain)
+      } else {
+        seen.add(trimmedDomain)
+      }
+    }
+
+    if (invalidDomains.length > 0) {
+      throw new Error(`Invalid domains: ${invalidDomains.slice(0, 5).join(', ')}${invalidDomains.length > 5 ? ` and ${invalidDomains.length - 5} more` : ''}`)
+    }
+
+    if (duplicates.length > 0) {
+      throw new Error(`Duplicate domains found: ${duplicates.slice(0, 5).join(', ')}${duplicates.length > 5 ? ` and ${duplicates.length - 5} more` : ''}`)
     }
   }
 }

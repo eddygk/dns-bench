@@ -27,3 +27,6 @@ docs/reference-dns-benchmark.md
 
 # Spec-kit implementation guide (environment-specific)
 docs/spec-kit.md
+dstart.sh
+dstatus.sh
+dstop.sh

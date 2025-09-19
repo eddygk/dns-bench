@@ -350,14 +350,13 @@ export function BenchmarkPage() {
                       failed: <XCircle className="h-4 w-4 text-red-500" />
                     }[server.status]
 
-                    const statusLabel =
-                      server.status === 'success'
-                        ? 'Completed'
-                        : server.status === 'running'
-                          ? 'Running'
-                          : server.status === 'pending'
-                            ? 'Pending'
-                            : 'Failed'
+                    const statusLabels = {
+                      success: 'Completed',
+                      running: 'Running',
+                      pending: 'Pending',
+                      failed: 'Failed'
+                    }
+                    const statusLabel = statusLabels[server.status]
 
                     return (
                       <TableRow

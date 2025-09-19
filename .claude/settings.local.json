@@ -30,7 +30,14 @@
       "mcp__shadcn__view_items_in_registries",
       "Bash(netstat:*)",
       "Bash(ss:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__github__get_pull_request",
+      "mcp__github__get_pull_request_files",
+      "mcp__github__get_pull_request_diff",
+      "mcp__github__get_pull_request_review_comments",
+      "Bash(git pull:*)",
+      "mcp__context7__get-library-docs",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
