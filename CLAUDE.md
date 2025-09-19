@@ -154,7 +154,7 @@ The project consists of:
 
 #### Backend API (Express.js + TypeScript)
 - **DNS Detection**: Auto-detects system DNS via resolv.conf, systemd-resolve, NetworkManager
-- **Concurrent Testing**: Tests 20 diverse domains using dig command with timeout controls
+- **Concurrent Testing**: Tests 72+ diverse domains using Node.js dns.Resolver() with timeout controls
 - **Statistics Engine**: Calculates avg, min, max, median response times and success rates
 - **WebSocket Updates**: Real-time progress broadcasting to connected clients
 - **Data Persistence**: SQLite database for benchmark history and results
@@ -229,7 +229,7 @@ localhost:6379
 ### DNS Testing Engine
 - Filters out localhost DNS servers (127.x.x.x addresses) automatically
 - Uses 2-second timeout for DNS queries with configurable retry attempts
-- Requires `dig` command in Docker containers (installed via bind-tools)
+- Uses Node.js native dns.Resolver() (no external DNS tools required)
 - Concurrent testing with configurable worker limits (default: 3)
 - Statistical validation with multiple measurement rounds
 
