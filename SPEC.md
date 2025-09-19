@@ -14,7 +14,7 @@ Transform the DNS Bench Linux CLI tool into a modern, React-based web applicatio
 
 ### Frontend Stack
 - **Framework**: React 18 with TypeScript
-- **State Management**: Zustand
+- **State Management**: React Query (TanStack Query) + useState
 - **UI Components**: shadcn/ui (Radix UI + Tailwind CSS)
 - **Styling**: Tailwind CSS with CSS Variables
 - **Charts**: Recharts for data visualization
@@ -28,9 +28,9 @@ Transform the DNS Bench Linux CLI tool into a modern, React-based web applicatio
 ### Backend Stack
 - **Runtime**: Node.js 20 LTS
 - **Framework**: Express.js with TypeScript
-- **DNS Testing**: node-dns and dns-packet libraries
+- **DNS Testing**: Node.js native dns.Resolver() API
 - **WebSocket**: Socket.io server
-- **Process Management**: Worker threads for concurrent DNS tests
+- **Concurrency**: Promise-based concurrent DNS resolution
 - **Database**: SQLite for storing test history (optional PostgreSQL for production)
 - **API Documentation**: OpenAPI/Swagger
 
