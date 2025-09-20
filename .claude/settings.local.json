@@ -37,7 +37,9 @@
       "mcp__github__get_pull_request_review_comments",
       "Bash(git pull:*)",
       "mcp__context7__get-library-docs",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm search:*)",
+      "WebFetch(domain:www.npmjs.com)"
     ],
     "deny": [],
     "ask": []

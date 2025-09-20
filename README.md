@@ -260,6 +260,27 @@ HOST_IP=<your-lan-ip>  # Manual configuration only (auto-detection removed)
 
 ## 🐛 Troubleshooting
 
+### Development Server Issues
+
+**Backend startup problems or API connection refused errors:**
+- **Root Cause**: Old backend processes may be running from wrong directory or holding ports
+- **Solution**: Clean restart all processes:
+  ```bash
+  # Kill all existing processes
+  pkill -f tsx
+  pkill -f vite
+
+  # Then start development servers
+  cd web-app/server && npm run dev &
+  cd web-app/client && npm run dev
+  ```
+- **Verification**: Check both services are running correctly:
+  ```bash
+  lsof -i :3000  # Frontend should be running
+  lsof -i :3001  # Backend should be running
+  curl http://localhost:3001/api/health  # Should return {"status":"ok"}
+  ```
+
 ### Container Issues
 
 ```bash
@@ -317,6 +338,13 @@ If accessing from another device on your network:
 - Fixed deprecated `onSuccess` callback in dashboard.tsx useQuery hook
 - Applied consistent `useEffect` pattern for state synchronization
 - Dashboard now properly displays all configured local DNS servers
+
+**"Benchmarks not running / History page connection refused"**
+- ✅ **FIXED**: Backend process management issue resolved
+- Issue: Old backend processes holding ports but not serving correct routes
+- Root cause: Process started from wrong directory or port conflicts
+- Solution: Clean process restart using `pkill -f tsx && pkill -f vite` then start development servers manually
+- Prevention: Always restart development servers cleanly to avoid port conflicts
 
 **Real-time updates not working**
 - Check WebSocket connection in browser console

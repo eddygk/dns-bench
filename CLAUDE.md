@@ -90,6 +90,9 @@ Based on the gap analysis, prioritize implementation in this order:
 - 📱 **Responsive**: Works on desktop, tablet, mobile
 - 🔒 **Security**: Helmet, rate limiting, Docker-native CORS configuration
 - ⚙️ **Settings**: Comprehensive CORS management with real-time status display
+- 🚀 **Benchmarks**: Quick and Full benchmarks run successfully with real-time updates
+- 📊 **History Page**: Displays past benchmark results correctly
+- 🔧 **Process Management**: Clean startup sequence prevents port conflicts
 
 ### ✅ ENHANCED FAILURE DIAGNOSTICS - COMPLETED
 - ✅ **Tabbed Results Interface**: Overview, Failures, Server Analysis, Raw Diagnostics
@@ -405,6 +408,28 @@ df -h /
 **Root Cause**: Dashboard was using same deprecated `onSuccess` pattern as Settings page
 **Files Modified**: `/web-app/client/src/pages/dashboard.tsx:60-74`
 **Pattern Applied**: Same useEffect-based state sync as Settings page fix
+
+### ✅ BACKEND PROCESS MANAGEMENT - COMPLETED (September 2025)
+- ✅ **Fixed Benchmark/History Connection Issues**: Resolved backend process management problems
+- ✅ **Identified Root Cause**: Old backend processes holding ports but not serving correct API routes
+- ✅ **Process Cleanup Solution**: Clean restart protocol using `pkill -f tsx && pkill -f vite` then start development servers manually
+- ✅ **Prevention Protocol**: Always clean restart development servers to prevent port conflicts
+- ✅ **Verification Commands**: `lsof -i :3000` (frontend), `lsof -i :3001` (backend), `curl http://localhost:3001/api/health`
+
+### Technical Details of Backend Process Fix
+**Issue**: Multiple backend processes running simultaneously:
+- Old process (wrong directory context): Not serving API routes correctly
+- New process (correct directory): Started correctly but port conflicts
+
+**Root Cause**:
+- Startup scripts work correctly when used properly
+- Problem was lingering processes from previous sessions holding ports
+- Old processes from wrong working directory couldn't serve API routes
+
+**Solution Pattern**:
+1. Kill all related processes: `pkill -f tsx && pkill -f vite`
+2. Start development servers manually in correct directories
+3. Verify services: Check ports and health endpoints
 
 ### Missing Features (User Reports)
 
