@@ -30,3 +30,12 @@ docs/spec-kit.md
 dstart.sh
 dstatus.sh
 dstop.sh
+
+# Runtime process ID files (change during app execution)
+.dns-bench-client.pid
+.dns-bench-monitor.pid
+.dns-bench-server.pid
+.dns-bench-monitor.sh
+
+# Build output (generated during client build)
+web-app/client/dist/
