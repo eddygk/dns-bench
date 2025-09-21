@@ -48,10 +48,15 @@ jobs:
         npm run type-check || echo "Client type checking skipped (not configured)"
 
     - name: Run unit tests with real DNS
-      run: npm run test:unit
+      run: npm run test:unit -- --testPathIgnorePatterns="frontend"
       env:
         NODE_ENV: test
         # Tests use real DNS via Node.js dns.Resolver against reliable servers
+
+    - name: Run integration tests
+      run: npm run test:integration
+      env:
+        NODE_ENV: test
 
     - name: Upload test coverage
       uses: actions/upload-artifact@v4
