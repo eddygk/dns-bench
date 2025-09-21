@@ -39,7 +39,9 @@
       "mcp__context7__get-library-docs",
       "Bash(curl:*)",
       "Bash(npm search:*)",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "mcp__github__get_me",
+      "mcp__github__get_workflow_run"
     ],
     "deny": [],
     "ask": []
