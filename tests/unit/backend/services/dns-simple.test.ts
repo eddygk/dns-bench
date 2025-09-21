@@ -61,13 +61,13 @@ describe('DNS Core Functionality', () => {
 
   describe('DNS Performance Measurement', () => {
     it('should measure DNS query time', async () => {
-      const startTime = Date.now()
+      const startTime = performance.now()
       const resolve4 = promisify(dns.resolve4)
 
       await resolve4('google.com')
 
-      const queryTime = Date.now() - startTime
-      expect(queryTime).toBeGreaterThan(0)
+      const queryTime = performance.now() - startTime
+      expect(queryTime).toBeGreaterThanOrEqual(0) // Allow 0ms for very fast cached responses
       expect(queryTime).toBeLessThan(5000) // Should be reasonably fast
     })
 
