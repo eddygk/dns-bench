@@ -1,5 +1,21 @@
 {
+  "name": "dns-bench-tests",
+  "version": "1.0.0",
+  "description": "DNS Benchmark testing suite",
+  "scripts": {
+    "test": "npm run test:unit",
+    "test:unit": "jest --coverage --testPathPatterns=tests/unit",
+    "test:integration": "jest --testPathPatterns=tests/integration --runInBand",
+    "test:watch": "jest --watch --testPathPatterns=tests/unit",
+    "test:debug": "node --inspect-brk ./node_modules/.bin/jest --runInBand --no-cache",
+    "coverage:report": "jest --coverage && echo 'Coverage report generated in coverage/lcov-report/index.html'"
+  },
   "devDependencies": {
-    "shadcn": "^3.3.0"
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.1.3",
+    "shadcn": "^3.3.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.4"
   }
 }
