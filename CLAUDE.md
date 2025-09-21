@@ -2,8 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Context7 Integration
-When working on this project, use context7 for fetching up-to-date documentation and code examples. Add "use context7" to prompts when you need current information about:
+## MCP Tools Available
+
+### Context7 Integration
+Use context7 for fetching up-to-date documentation and code examples:
 - React 18+ patterns and hooks
 - Node.js/Express API development
 - DNS protocols and libraries
@@ -11,6 +13,34 @@ When working on this project, use context7 for fetching up-to-date documentation
 - shadcn/ui component patterns
 - WebSocket implementations for real-time updates
 - Docker best practices for development
+
+### GitHub MCP
+Complete GitHub repository management:
+- Issues, PRs, commits, workflows
+- Code search, file operations
+- Review submissions, branch management
+
+### Playwright MCP
+Browser automation for testing:
+- Navigate, click, type, screenshot
+- Form filling, element interaction
+- Network monitoring, console logs
+
+### shadcn MCP
+Component library management:
+- Search/view shadcn components
+- Get installation commands
+- Find usage examples
+
+### Perplexity MCP
+Web search and reasoning:
+- Real-time web information
+- Complex reasoning tasks
+
+### IDE MCP
+Development environment integration:
+- VS Code diagnostics
+- Jupyter code execution
 
 ## Spec-Kit Integration
 This project follows spec-kit methodology for feature development:
