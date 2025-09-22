@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -13,6 +13,10 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@/components/ui/toggle-group'
 import { apiRequest, getBackendURL } from '@/lib/api'
 import { io, Socket } from 'socket.io-client'
 import {
@@ -22,7 +26,9 @@ import {
   Timer,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Database
 } from 'lucide-react'
 
 interface RealTimeResult {
@@ -31,19 +37,20 @@ interface RealTimeResult {
   time: number
   status: 'success' | 'running' | 'pending' | 'failed'
   tests: string
+  timingMethod?: 'performance-observer' | 'manual-fallback'
 }
 
 export function BenchmarkPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const testType = searchParams.get('type') || 'quick'
+  const [testType, setTestType] = useState(searchParams.get('type') || 'quick')
   const autostart = searchParams.get('autostart') === 'true'
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [currentTest, setCurrentTest] = useState<string>('')
   const [testId, setTestId] = useState<string | null>(null)
   const [realTimeResults, setRealTimeResults] = useState<RealTimeResult[]>([])
-  const [activityLog, setActivityLog] = useState<Array<{domain: string, server: string, time: number | null, status: 'success' | 'timeout'}>>([])
+  const [activityLog, setActivityLog] = useState<Array<{domain: string, server: string, time: number | null, status: 'success' | 'timeout', timingMethod?: 'high-precision' | 'fallback' | 'performance-observer' | 'manual-fallback'}>>([])
   const [socket, setSocket] = useState<Socket | null>(null)
   const [hasAutostarted, setHasAutostarted] = useState(false)
 
@@ -97,7 +104,8 @@ export function BenchmarkPage() {
                   ...newResults[existingIndex],
                   time: result.avgResponseTime || newResults[existingIndex].time,
                   status: result.successfulQueries > 0 ? 'success' : result.failedQueries > 0 ? 'failed' : 'running',
-                  tests: `${result.successfulQueries || 0}/${result.totalQueries || 20}`
+                  tests: `${result.successfulQueries || 0}/${result.totalQueries || 20}`,
+                  timingMethod: result.timingPrecision || 'manual-fallback'
                 }
               }
             })
@@ -232,6 +240,17 @@ export function BenchmarkPage() {
     setTestId(null)
   }
 
+  const handleTestTypeChange = (newTestType: string) => {
+    if (isRunning) return // Don't allow changes during a running test
+
+    setTestType(newTestType)
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev)
+      newParams.set('type', newTestType)
+      return newParams
+    })
+  }
+
   const getServerName = (ip: string, currentServers: string[]): string => {
     if (currentServers.includes(ip)) {
       return ip
@@ -252,36 +271,54 @@ export function BenchmarkPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">DNS Benchmark</h1>
-        <p className="text-muted-foreground">
-          {testType === 'quick' && 'Quick test: Top 3 public DNS (Cloudflare, Google, Quad9) + enabled local DNS'}
-          {testType === 'full' && 'Full benchmark against all enabled DNS servers'}
-          {testType === 'custom' && 'Custom benchmark with selected servers'}
-        </p>
+      <div className="space-y-3">
+        <h1 className="text-2xl font-bold tracking-tight">DNS Benchmark</h1>
+
+        {/* Test Type Toggle */}
+        <div className="flex flex-col space-y-2">
+          <ToggleGroup
+            type="single"
+            value={testType}
+            onValueChange={(value) => value && handleTestTypeChange(value)}
+            disabled={isRunning}
+            className="justify-start"
+          >
+            <ToggleGroupItem value="quick" aria-label="Quick test">
+              <Zap className="h-4 w-4 mr-2" />
+              Quick Test
+            </ToggleGroupItem>
+            <ToggleGroupItem value="full" aria-label="Full test">
+              <Database className="h-4 w-4 mr-2" />
+              Full Test
+            </ToggleGroupItem>
+          </ToggleGroup>
+
+          <p className="text-sm text-muted-foreground">
+            {testType === 'quick' && 'Quick test: Top 3 public DNS + local DNS (~30 seconds)'}
+            {testType === 'full' && 'Full benchmark against all enabled DNS servers (~2-3 minutes)'}
+            {testType === 'custom' && 'Custom benchmark with selected servers'}
+          </p>
+        </div>
       </div>
 
       {/* Benchmark Status */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Activity className="h-5 w-5" />
-              <CardTitle>
-                {isRunning ? 'Benchmark in Progress' : 'Ready to Start'}
+              <Activity className="h-4 w-4" />
+              <CardTitle className="text-lg">
+                {isRunning ? 'In Progress' : 'Ready'}
               </CardTitle>
             </div>
-            <Badge variant={isRunning ? 'default' : 'secondary'}>
+            <Badge variant={isRunning ? 'default' : 'secondary'} className="text-xs">
               {isRunning ? 'Running' : 'Idle'}
             </Badge>
           </div>
-          <CardDescription>
-            Testing DNS servers with multiple domains for accurate results
-          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 pt-0">
           {/* Progress Bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
@@ -306,33 +343,31 @@ export function BenchmarkPage() {
             )}
           </div>
 
-          {/* Current Test Status */}
+          {/* Current Test Status - Compact */}
           {isRunning && currentTest && (
-            <div className="p-4 bg-muted/50 rounded-lg">
+            <div className="p-2 bg-muted/50 rounded-md">
               <div className="flex items-center space-x-2">
-                <Timer className="h-4 w-4 animate-spin" />
-                <span className="text-sm font-medium">Current Test</span>
+                <Timer className="h-3 w-3 animate-spin" />
+                <span className="text-xs font-medium">Testing:</span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {currentTest}
+                </span>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {currentTest}
-              </p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Real-time Results */}
+      {/* Real-time Results - Always Visible When Running */}
       {isRunning && realTimeResults.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Real-time Results</CardTitle>
-            <CardDescription>
-              Live performance data as tests complete
-            </CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Live Results</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ScrollArea className="max-h-[340px]">
-              <Table className="min-w-[520px]">
+          <CardContent className="pt-0">
+            <div className="overflow-hidden rounded-md border max-h-[45vh]">
+              <div className="overflow-y-auto max-h-[45vh]">
+                <Table className="min-w-[520px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Server</TableHead>
@@ -375,9 +410,16 @@ export function BenchmarkPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <span className="font-mono text-sm">
-                            {server.time > 0 ? `${server.time.toFixed(1)}ms` : '--'}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            {server.timingMethod === 'performance-observer' ? '🎯' : '⏱️'}
+                            <span className="font-mono text-sm">
+                              {server.time > 0
+                                ? `${server.timingMethod === 'performance-observer'
+                                    ? server.time.toFixed(3)
+                                    : server.time.toFixed(1)}ms`
+                                : '--'}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -390,7 +432,8 @@ export function BenchmarkPage() {
                   })}
                 </TableBody>
               </Table>
-            </ScrollArea>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -440,11 +483,20 @@ export function BenchmarkPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-mono text-xs">
-                          {test.status === 'success'
-                            ? test.time !== null
-                              ? `${test.time.toFixed(1)}ms`
-                              : 'Testing...'
-                            : 'Timeout'}
+                          <div className="flex items-center justify-end gap-1">
+                            {test.status === 'success' && test.timingMethod && (
+                              <span className="text-xs">
+                                {test.timingMethod === 'high-precision' ? '🎯' : '⏱️'}
+                              </span>
+                            )}
+                            <span>
+                              {test.status === 'success'
+                                ? test.time !== null
+                                  ? `${test.time.toFixed(1)}ms`
+                                  : 'Testing...'
+                                : 'Timeout'}
+                            </span>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

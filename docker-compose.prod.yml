@@ -1,0 +1,138 @@
+# Production Docker Compose for DNS Bench
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  # Frontend - React application served by Nginx
+  frontend:
+    build:
+      context: ./web-app
+      dockerfile: client/Dockerfile
+      target: production
+      args:
+        NODE_VERSION: 20
+    container_name: dns-bench-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+    networks:
+      - dns-bench-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dns-bench.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.services.dns-bench.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Backend - Node.js API server
+  backend:
+    build:
+      context: ./web-app
+      dockerfile: server/Dockerfile
+      target: production
+      args:
+        NODE_VERSION: 20
+    container_name: dns-bench-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_PATH=/app/data/dns-bench.db
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MAX_CONCURRENT_BENCHMARKS=${MAX_CONCURRENT_BENCHMARKS:-3}
+      - BENCHMARK_TIMEOUT=${BENCHMARK_TIMEOUT:-30000}
+    volumes:
+      - dns_data:/app/data
+      - dns_config:/app/config
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - dns-bench-network
+    cap_add:
+      - NET_RAW
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Redis - Caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: dns-bench-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - dns-bench-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Persistent volumes for data
+volumes:
+  dns_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-./data}
+
+  dns_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CONFIG_PATH:-./config}
+
+  redis_data:
+    driver: local
+
+# Network for service communication
+networks:
+  dns-bench-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

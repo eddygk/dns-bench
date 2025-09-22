@@ -19,21 +19,63 @@ A modern web-based DNS benchmarking application that tests and compares DNS serv
 
 ## 🚀 Quick Start
 
-### Docker Deployment (Recommended)
+### Production Deployment (Recommended)
+
+**One-command production deployment:**
 
 ```bash
 # Clone the repository
 git clone https://github.com/eddygk/dns-bench.git
 cd dns-bench
 
-# Start the application
+# Deploy to production
+./deploy.sh
+```
+
+The deployment script will:
+- ✅ Check Docker prerequisites
+- ✅ Set up environment configuration
+- ✅ Auto-detect host IP for CORS
+- ✅ Build optimized production images
+- ✅ Start services with health checks
+- ✅ Display access URLs and management commands
+
+**Production Features:**
+- 🔒 **Security**: Non-root containers, health checks, proper logging
+- 🚀 **Performance**: Multi-stage builds, optimized images, caching
+- 📊 **Monitoring**: Health checks, structured logging, service status
+- ⚙️ **Configuration**: Environment-based config, persistent volumes
+- 🔄 **Management**: Easy updates, restarts, and maintenance
+
+**Quick Commands:**
+```bash
+./deploy.sh          # Deploy/start services
+./deploy.sh status   # Check service health
+./deploy.sh logs     # View service logs
+./deploy.sh update   # Update to latest version
+./deploy.sh stop     # Stop all services
+./deploy.sh cleanup  # Remove everything
+```
+
+**Access your deployment:**
+- **Frontend**: http://YOUR_IP:80
+- **Backend API**: http://YOUR_IP:3001/api/health
+
+### Development Deployment
+
+```bash
+# Clone the repository
+git clone https://github.com/eddygk/dns-bench.git
+cd dns-bench
+
+# Start development environment
 make dev
 
 # Or using docker-compose directly
 docker-compose up -d
 ```
 
-Access the application at:
+Access the development environment at:
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:3001/api/health
 
@@ -256,6 +298,198 @@ NODE_ENV=development
 DB_PATH=/app/data/dns-bench.db
 CORS_ORIGIN=http://localhost:3000
 HOST_IP=<your-lan-ip>  # Manual configuration only (auto-detection removed)
+```
+
+## 🐳 Production Deployment
+
+### Docker Files Overview
+
+The production deployment uses optimized Docker configurations:
+
+```
+dns-bench/
+├── docker-compose.prod.yml     # Production compose file
+├── docker-compose.yml          # Development compose file
+├── deploy.sh                   # Production deployment script
+├── .env.production            # Production environment template
+├── redis.conf                 # Redis production configuration
+└── web-app/
+    ├── client/Dockerfile      # Multi-stage React build
+    └── server/Dockerfile      # Multi-stage Node.js build
+```
+
+### Production Features
+
+**🔒 Security:**
+- Non-root containers (nodejs user UID 1001)
+- Build verification at each stage
+- Minimal attack surface (Alpine Linux)
+- Health check endpoints
+- Resource isolation
+
+**🚀 Performance:**
+- Multi-stage builds for minimal image size
+- Optimized layer caching with mount cache
+- Production-only dependencies
+- Gzip compression (Nginx)
+- Redis caching layer
+
+**📊 Monitoring:**
+- Container health checks (30s intervals)
+- Structured JSON logging
+- Log rotation (10MB max, 3 files)
+- Service dependency health verification
+
+**⚙️ Configuration:**
+- Environment-based configuration
+- Persistent volumes for data/config
+- Configurable resource limits
+- Auto-IP detection for CORS
+
+### Production Environment Variables
+
+Copy `.env.production` to `.env` and customize:
+
+```bash
+# Application
+NODE_ENV=production
+FRONTEND_PORT=80
+BACKEND_PORT=3001
+DOMAIN=yourdomain.com
+CORS_ORIGIN=http://yourdomain.com
+
+# Performance
+MAX_CONCURRENT_BENCHMARKS=3
+BENCHMARK_TIMEOUT=30000
+LOG_LEVEL=info
+
+# Data Storage
+DATA_PATH=./data
+CONFIG_PATH=./config
+
+# Optional: Redis authentication
+# REDIS_PASSWORD=your_secure_password
+
+# Optional: SSL termination
+# ENABLE_SSL=true
+# SSL_CERT_PATH=/path/to/cert.pem
+# SSL_KEY_PATH=/path/to/key.pem
+```
+
+### Deployment Commands
+
+```bash
+# Production deployment
+./deploy.sh                    # Full production deployment
+./deploy.sh deploy            # Same as above
+./deploy.sh start             # Same as above
+
+# Management
+./deploy.sh status            # Service health status
+./deploy.sh logs              # View all service logs
+./deploy.sh restart           # Restart all services
+
+# Updates
+./deploy.sh update            # Update and restart with latest code
+git pull && ./deploy.sh update  # Manual update
+
+# Maintenance
+./deploy.sh stop              # Stop all services
+./deploy.sh cleanup           # Remove containers, images, volumes
+
+# Help
+./deploy.sh help              # Show all available commands
+```
+
+### Manual Production Deployment
+
+If you prefer manual control over the deployment:
+
+```bash
+# Using the production compose file directly
+docker-compose -f docker-compose.prod.yml up -d
+
+# Check service status
+docker-compose -f docker-compose.prod.yml ps
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Stop services
+docker-compose -f docker-compose.prod.yml down
+```
+
+### Production Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     DNS Bench Production                │
+├─────────────────────────────────────────────────────────┤
+│  Frontend (Nginx)     │  Backend (Node.js)   │  Redis   │
+│  ├─ React App (built) │  ├─ Express API      │  Cache   │
+│  ├─ Static Assets     │  ├─ Socket.IO        │  Session │
+│  ├─ Gzip Compression  │  ├─ DNS Testing      │  Storage │
+│  └─ Health Check      │  └─ Health Check     │  Jobs    │
+├─────────────────────────────────────────────────────────┤
+│                    Docker Network                       │
+│                  172.20.0.0/16                         │
+├─────────────────────────────────────────────────────────┤
+│              Persistent Volumes                         │
+│  ├─ ./data (SQLite, logs)                              │
+│  ├─ ./config (DNS server configs)                      │
+│  └─ redis_data (Redis persistence)                     │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Reverse Proxy Setup (Optional)
+
+For production deployments behind a reverse proxy:
+
+**Nginx:**
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /api {
+        proxy_pass http://localhost:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /socket.io {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+**Traefik:** Labels already included in `docker-compose.prod.yml`
+
+### Health Monitoring
+
+All services include health checks:
+
+```bash
+# Check overall deployment health
+./deploy.sh status
+
+# Individual service health
+docker inspect dns-bench-frontend --format='{{.State.Health.Status}}'
+docker inspect dns-bench-backend --format='{{.State.Health.Status}}'
+docker inspect dns-bench-redis --format='{{.State.Health.Status}}'
+
+# Health check endpoints
+curl http://localhost:80/        # Frontend health
+curl http://localhost:3001/api/health  # Backend health
 ```
 
 ## 🐛 Troubleshooting

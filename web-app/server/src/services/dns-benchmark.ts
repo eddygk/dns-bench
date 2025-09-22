@@ -1,12 +1,60 @@
 import { promisify } from 'util'
 import { spawn } from 'child_process'
-import dns from 'dns'
 import { randomUUID } from 'crypto'
-import { performance } from 'perf_hooks'
+import CacheableLookup from 'cacheable-lookup'
+import QuickLRU from 'quick-lru'
 import type { Logger } from 'pino'
 import type { BenchmarkOptions, BenchmarkResult, TestStatus, DNSTestResult } from '@dns-bench/shared'
 import type { SettingsService } from './settings.js'
 import type { DatabaseService } from './database.js'
+
+class HighPrecisionDNSService {
+  private lookupCache: CacheableLookup
+
+  constructor() {
+    // Create cacheable-lookup without custom cache to avoid type conflicts
+    this.lookupCache = new CacheableLookup()
+  }
+
+  async timedLookup(hostname: string, servers: string[]): Promise<{
+    success: boolean
+    responseTime: number
+    timingMethod: 'high-precision' | 'fallback'
+    ip?: string
+    error?: string
+  }> {
+    // Set custom DNS servers for this query
+    this.lookupCache.servers = servers
+
+    const start = process.hrtime.bigint()
+
+    try {
+      const result = await this.lookupCache.lookupAsync(hostname)
+      const end = process.hrtime.bigint()
+
+      const durationNs = end - start
+      const durationMs = Number(durationNs) / 1000000 // Convert nanoseconds to milliseconds with decimal precision
+
+      return {
+        success: true,
+        responseTime: durationMs,
+        timingMethod: 'high-precision',
+        ip: Array.isArray(result) ? result[0].address : result.address
+      }
+    } catch (error) {
+      const end = process.hrtime.bigint()
+      const durationNs = end - start
+      const durationMs = Number(durationNs) / 1000000 // Convert nanoseconds to milliseconds with decimal precision
+
+      return {
+        success: false,
+        responseTime: durationMs,
+        timingMethod: 'high-precision',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+}
 
 export class DNSBenchmarkService {
   private activeTests = new Map<string, TestStatus>()
@@ -120,6 +168,12 @@ export class DNSBenchmarkService {
   }
 
   constructor(private logger: Logger, private settingsService?: SettingsService, private dbService?: DatabaseService) {}
+
+  private isValidIP(ip: string): boolean {
+    const ipv4Regex = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/
+    const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/
+    return ipv4Regex.test(ip) || ipv6Regex.test(ip)
+  }
 
   // Upstream validation using reliable DNS servers
   private readonly validationServers = ['1.1.1.1', '8.8.8.8', '9.9.9.9']
@@ -285,6 +339,8 @@ export class DNSBenchmarkService {
   }): Promise<string> {
     const testId = randomUUID()
     const { servers, testType, domains, options: benchmarkOptions } = options
+
+    // High-precision DNS timing will be handled per query
     
     // Determine servers to test
     let serversToTest: string[] = []
@@ -490,23 +546,23 @@ export class DNSBenchmarkService {
             domain: result.domain,
             success: result.success,
             responseTime: result.responseTime,
-            responseCode: result.responseCode,
-            errorType: result.errorType,
-            authoritative: result.authoritative,
-            queryTime: result.queryTime,
-            ipResult: result.ipResult,
-            errorMessage: result.error,
-            rawOutput: result.rawOutput
+            responseCode: result.responseCode || undefined,
+            errorType: result.errorType || undefined,
+            authoritative: result.authoritative || undefined,
+            queryTime: result.queryTime || undefined,
+            ipResult: result.ipResult || undefined,
+            errorMessage: result.error || undefined,
+            rawOutput: result.rawOutput || undefined
           }))
           await this.dbService.saveDomainResults(testId, domainResults)
 
           // Analyze failures and save analysis
           const failureAnalysisResults = await this.analyzeFailurePatterns(results, domains)
           const failureAnalysis = failureAnalysisResults.consistentFailures.map(failure => ({
-            domain: failure.domain,
+            domain: failure,
             consistentFailure: true,
-            upstreamShouldResolve: failure.upstreamValidation?.shouldResolve,
-            failurePattern: failure.upstreamValidation?.shouldResolve === false ? 'UPSTREAM_BLOCKED' : 'CONSISTENT_FAILURE'
+            upstreamShouldResolve: failureAnalysisResults.upstreamValidation[failure] ?? false,
+            failurePattern: failureAnalysisResults.upstreamValidation[failure] === false ? 'UPSTREAM_BLOCKED' : 'CONSISTENT_FAILURE'
           }))
 
           // Add server-specific failures to analysis
@@ -515,6 +571,7 @@ export class DNSBenchmarkService {
               failureAnalysis.push({
                 domain,
                 consistentFailure: false,
+                upstreamShouldResolve: failureAnalysisResults.upstreamValidation[domain] ?? false,
                 failurePattern: `SERVER_SPECIFIC_${serverFailure.pattern}`
               })
             }
@@ -550,6 +607,7 @@ export class DNSBenchmarkService {
     queryTime?: number;
     errorType?: string;
     rawOutput?: string;
+    timingMethod?: 'high-precision' | 'fallback';
   }> {
     const result: DNSTestResult & {
       responseCode?: string;
@@ -557,6 +615,7 @@ export class DNSBenchmarkService {
       queryTime?: number;
       errorType?: string;
       rawOutput?: string;
+      timingMethod?: 'high-precision' | 'fallback';
     } = {
       server,
       domain,
@@ -567,24 +626,26 @@ export class DNSBenchmarkService {
     for (let attempt = 0; attempt <= retries; attempt++) {
       const startTime = Date.now()
 
-      // Use Node.js DNS for robust DNS resolution
+      // Use high-precision DNS service for robust DNS resolution
       const dnsResult = await this.runDnsQuery(server, domain, timeout)
 
       if (dnsResult.success) {
         result.responseTime = dnsResult.queryTime || (Date.now() - startTime)
+        result.timingMethod = dnsResult.timingMethod || 'fallback'
         result.success = true
-        result.ip = dnsResult.ip
-        result.responseCode = dnsResult.responseCode
-        result.authoritative = dnsResult.authoritative
-        result.queryTime = dnsResult.queryTime
-        result.rawOutput = dnsResult.rawOutput
-        result.ipResult = dnsResult.ip
+        if (dnsResult.ip) result.ip = dnsResult.ip
+        if (dnsResult.responseCode) result.responseCode = dnsResult.responseCode
+        if (dnsResult.authoritative !== undefined) result.authoritative = dnsResult.authoritative
+        if (dnsResult.queryTime !== undefined) result.queryTime = dnsResult.queryTime
+        if (dnsResult.rawOutput) result.rawOutput = dnsResult.rawOutput
         break
       } else {
         // Store failure details for analysis
-        result.errorType = dnsResult.errorType
-        result.responseCode = dnsResult.responseCode
-        result.rawOutput = dnsResult.rawOutput
+        if (dnsResult.errorType) result.errorType = dnsResult.errorType
+        if (dnsResult.responseCode) result.responseCode = dnsResult.responseCode
+        if (dnsResult.rawOutput) result.rawOutput = dnsResult.rawOutput
+        result.timingMethod = dnsResult.timingMethod || 'fallback'
+        result.responseTime = dnsResult.queryTime || (Date.now() - startTime)
 
         // If this is the last attempt, set the error message
         if (attempt === retries) {
@@ -615,8 +676,8 @@ export class DNSBenchmarkService {
         upstreamResults.push({
           server,
           success: result.success,
-          responseCode: result.responseCode,
-          errorType: result.errorType
+          ...(result.responseCode && { responseCode: result.responseCode }),
+          ...(result.errorType && { errorType: result.errorType })
         })
         if (result.success) {
           successCount++
@@ -740,53 +801,32 @@ export class DNSBenchmarkService {
     queryTime?: number;
     errorType?: string;
     rawOutput?: string;
+    timingMethod?: 'high-precision' | 'fallback';
   }> {
-    const startTime = performance.now()
+    const dnsService = new HighPrecisionDNSService()
 
     try {
-      // Create a custom resolver with the specified DNS server
-      const resolver = new dns.Resolver()
-      resolver.setServers([server])
-
-      // Promisify the resolve4 method for A records
-      const resolve4 = promisify(resolver.resolve4.bind(resolver))
-
-      // Set timeout
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('DNS_TIMEOUT')), timeout)
-      })
-
-      // Race between DNS resolution and timeout
-      const addresses = await Promise.race([
-        resolve4(domain),
-        timeoutPromise
+      const result = await Promise.race([
+        dnsService.timedLookup(domain, [server]),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('DNS_TIMEOUT')), timeout)
+        )
       ])
 
-      const queryTime = performance.now() - startTime
-
-      if (addresses && addresses.length > 0) {
-        return {
-          success: true,
-          ip: addresses[0], // Return first IP address
-          responseCode: 'NOERROR',
-          authoritative: false, // Node.js DNS doesn't provide this info easily
-          queryTime: Math.round(queryTime),
-          rawOutput: `Resolved ${domain} to ${addresses.join(', ')}`
-        }
-      } else {
-        return {
-          success: false,
-          responseCode: 'NODATA',
-          errorType: 'NO_ADDRESSES',
-          queryTime: Math.round(queryTime),
-          rawOutput: `No addresses found for ${domain}`
-        }
+      return {
+        success: result.success,
+        ip: result.ip,
+        responseCode: result.success ? 'NOERROR' : 'SERVFAIL',
+        queryTime: result.responseTime, // Preserve full precision for statistics calculation
+        timingMethod: result.timingMethod,
+        rawOutput: result.success
+          ? `Resolved ${domain} to ${result.ip}`
+          : `Error: ${result.error}`
       }
     } catch (error) {
-      const queryTime = performance.now() - startTime
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
-      // Map Node.js DNS errors to standard DNS response codes
+      // Map errors to DNS response codes
       let responseCode = 'SERVFAIL'
       let errorType = 'SERVER_FAILURE'
 
@@ -807,7 +847,8 @@ export class DNSBenchmarkService {
         success: false,
         responseCode,
         errorType,
-        queryTime: Math.round(queryTime),
+        queryTime: timeout,
+        timingMethod: 'fallback',
         rawOutput: `Error: ${errorMessage}`
       }
     }
@@ -840,19 +881,30 @@ export class DNSBenchmarkService {
         const max = responseTimes[responseTimes.length - 1]
         const median = responseTimes[Math.floor(responseTimes.length / 2)]
         
+        // Determine primary timing method used for this server
+        const timingMethods = serverTests.map(t => t.timingMethod).filter(Boolean)
+        const highPrecisionCount = timingMethods.filter(m => m === 'high-precision').length
+        const primaryTimingMethod = highPrecisionCount > timingMethods.length / 2 ? 'high-precision' : 'fallback'
+
         stats.push({
           server,
           serverName: await this.getServerName(server),
-          avgResponseTime: Math.round(avg * 100) / 100,
-          minResponseTime: min,
-          maxResponseTime: max,
-          medianResponseTime: median,
+          avgResponseTime: primaryTimingMethod === 'high-precision' ? Math.round(avg * 1000) / 1000 : Math.round(avg * 100) / 100,
+          minResponseTime: primaryTimingMethod === 'high-precision' ? Math.round(min * 1000) / 1000 : Math.round(min * 100) / 100,
+          maxResponseTime: primaryTimingMethod === 'high-precision' ? Math.round(max * 1000) / 1000 : Math.round(max * 100) / 100,
+          medianResponseTime: primaryTimingMethod === 'high-precision' ? Math.round(median * 1000) / 1000 : Math.round(median * 100) / 100,
           successRate: Math.round(successRate * 100) / 100,
           totalQueries: serverTests.length,
           successfulQueries: successfulTests.length,
-          failedQueries: serverTests.length - successfulTests.length
-        })
+          failedQueries: serverTests.length - successfulTests.length,
+          timingPrecision: primaryTimingMethod
+        } as BenchmarkResult)
       } else {
+        // Even for failed tests, determine timing method used
+        const timingMethods = serverTests.map(t => t.timingMethod).filter(Boolean)
+        const highPrecisionCount = timingMethods.filter(m => m === 'high-precision').length
+        const primaryTimingMethod = highPrecisionCount > timingMethods.length / 2 ? 'high-precision' : 'fallback'
+
         stats.push({
           server,
           serverName: await this.getServerName(server),
@@ -863,8 +915,9 @@ export class DNSBenchmarkService {
           successRate: 0,
           totalQueries: serverTests.length,
           successfulQueries: 0,
-          failedQueries: serverTests.length
-        })
+          failedQueries: serverTests.length,
+          timingPrecision: primaryTimingMethod
+        } as BenchmarkResult)
       }
     }
     
@@ -938,7 +991,7 @@ export class DNSBenchmarkService {
     ])
     
     return [headers, ...rows]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .map(row => row.map((cell: any) => `"${cell}"`).join(','))
       .join('\n')
   }
 }

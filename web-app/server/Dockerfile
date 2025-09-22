@@ -1,19 +1,27 @@
+# syntax=docker/dockerfile:1
 # Multi-stage Dockerfile for Node.js backend
 
+ARG NODE_VERSION=20
+
 # Development stage
-FROM node:20-alpine AS development
+FROM node:${NODE_VERSION}-alpine AS development
 
 # Install system dependencies for DNS tools and native modules
 RUN apk add --no-cache \
     bind-tools \
     python3 \
     make \
-    g++
+    g++ \
+    curl \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files for better layer caching
 COPY server/package*.json ./
+COPY shared/package*.json /shared/
+
+# Install dependencies
 RUN npm install
 
 # Copy shared types
@@ -22,8 +30,21 @@ COPY shared /shared
 # Copy source code
 COPY server .
 
-# Create data directory
+# Create data directory with proper permissions
 RUN mkdir -p /app/data
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Change ownership
+RUN chown -R nodejs:nodejs /app /shared
+
+USER nodejs
+
+# Health check for development
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3001/api/health || exit 1
 
 # Expose port
 EXPOSE 3001
@@ -32,22 +53,23 @@ EXPOSE 3001
 CMD ["npm", "run", "dev"]
 
 # Build stage
-FROM node:20-alpine AS build
+FROM node:${NODE_VERSION}-alpine AS build
 
 # Install system dependencies
 RUN apk add --no-cache \
     bind-tools \
     python3 \
     make \
-    g++
+    g++ \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
 # Copy package files
 COPY server/package*.json ./
-COPY shared/package.json /shared/package.json
+COPY shared/package*.json /shared/
 
-# Install dependencies
+# Install dependencies (include dev dependencies for build)
 RUN npm install
 
 # Copy shared types
@@ -59,33 +81,47 @@ COPY server .
 # Build the application
 RUN npm run build
 
+# Verify build output exists
+RUN test -d /app/dist || (echo "Build failed: dist directory not found" && exit 1)
+RUN test -f /app/dist/index.js || (echo "Build failed: main entry point not found" && exit 1)
+
 # Production stage
-FROM node:20-alpine AS production
+FROM node:${NODE_VERSION}-alpine AS production
 
 # Install runtime dependencies
 RUN apk add --no-cache \
     bind-tools \
-    dumb-init
+    dumb-init \
+    curl \
+    && rm -rf /var/cache/apk/*
 
 # Create app user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
 WORKDIR /app
 
-# Copy package files and install production dependencies
+# Copy package files and install production dependencies only
 COPY server/package*.json ./
-RUN npm install --only=production && npm cache clean --force
+RUN npm install --only=production && \
+    npm cache clean --force
 
-# Copy built application
+# Copy built application with proper ownership
 COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=build --chown=nodejs:nodejs /shared /shared
 
-# Create data directory
-RUN mkdir -p /app/data && chown nodejs:nodejs /app/data
+# Create data directory with proper permissions
+RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
+
+# Create directory for configuration files
+RUN mkdir -p /app/config && chown -R nodejs:nodejs /app/config
 
 # Switch to non-root user
 USER nodejs
+
+# Health check for production
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3001/api/health || exit 1
 
 # Expose port
 EXPOSE 3001

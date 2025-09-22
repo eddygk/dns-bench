@@ -17,6 +17,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Download, Clock, CheckCircle, Award, Loader2, AlertTriangle, ChevronDown, ChevronUp, Eye, Activity, Server, Globe } from 'lucide-react'
 import { apiRequest } from '@/lib/api'
+import type { BenchmarkResult as SharedBenchmarkResult, DNSTestResult } from '@dns-bench/shared'
 import {
   Pagination,
   PaginationContent,
@@ -26,17 +27,8 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination'
 
-interface BenchmarkResult {
-  server: string
-  serverName: string
-  avgResponseTime: number
-  minResponseTime: number
-  maxResponseTime: number
-  medianResponseTime: number
-  successRate: number
-  totalQueries: number
-  successfulQueries: number
-  failedQueries: number
+interface BenchmarkResult extends SharedBenchmarkResult {
+  // Local interface extends shared type with any additional fields if needed
 }
 
 interface TestResults {
@@ -53,20 +45,17 @@ interface TestResults {
   results: BenchmarkResult[]
 }
 
-interface DomainResult {
+interface DomainResult extends Omit<DNSTestResult, 'server'> {
   id: string
   serverIp: string
-  domain: string
-  success: boolean
-  responseTime?: number
+  timestamp: string
+  errorMessage?: string
+  rawOutput?: string
   responseCode?: string
   errorType?: string
   authoritative?: boolean
   queryTime?: number
   ipResult?: string
-  errorMessage?: string
-  rawOutput?: string
-  timestamp: string
 }
 
 interface FailureAnalysis {
@@ -76,6 +65,29 @@ interface FailureAnalysis {
   upstreamShouldResolve?: boolean
   failurePattern: string
   analysisTimestamp: string
+}
+
+// Color transition helper functions
+const getTimeColor = (time: number, allTimes: number[]): string => {
+  if (allTimes.length === 0 || time === 0) return 'text-muted-foreground'
+
+  const validTimes = allTimes.filter(t => t > 0)
+  if (validTimes.length === 0) return 'text-muted-foreground'
+
+  const min = Math.min(...validTimes)
+  const max = Math.max(...validTimes)
+
+  // If all times are the same, return green
+  if (min === max) return 'text-green-600'
+
+  // Calculate percentage position (0 = best/green, 1 = worst/red)
+  const position = (time - min) / (max - min)
+
+  if (position <= 0.2) return 'text-green-600'      // Best 20% - Green
+  if (position <= 0.4) return 'text-green-500'      // Good - Light Green
+  if (position <= 0.6) return 'text-yellow-500'     // Average - Yellow
+  if (position <= 0.8) return 'text-orange-500'     // Poor - Orange
+  return 'text-red-600'                             // Worst 20% - Red
 }
 
 export function ResultsPage() {
@@ -460,16 +472,43 @@ export function ResultsPage() {
                     </span>
                   </TableCell>
                   <TableCell className="font-mono">
-                    {server.avgResponseTime > 0 ? `${server.avgResponseTime}ms` : '--'}
+                    <div className="flex items-center gap-1">
+                      {server.timingPrecision && (
+                        <span className="text-xs">
+                          {server.timingPrecision === 'high-precision' ? '🎯' : '⏱️'}
+                        </span>
+                      )}
+                      <span className={getTimeColor(server.avgResponseTime, results.results.map(s => s.avgResponseTime))}>
+                        {server.avgResponseTime > 0
+                          ? `${server.timingPrecision === 'high-precision'
+                              ? server.avgResponseTime.toFixed(3)
+                              : server.avgResponseTime.toFixed(1)}ms`
+                          : '--'}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="font-mono">
-                    {server.minResponseTime > 0 ? `${server.minResponseTime}ms` : '--'}
+                    {server.minResponseTime > 0
+                      ? `${server.timingPrecision === 'high-precision'
+                          ? server.minResponseTime.toFixed(3)
+                          : server.minResponseTime.toFixed(1)}ms`
+                      : '--'}
                   </TableCell>
                   <TableCell className="font-mono">
-                    {server.maxResponseTime > 0 ? `${server.maxResponseTime}ms` : '--'}
+                    <span className={getTimeColor(server.maxResponseTime, results.results.map(s => s.maxResponseTime))}>
+                      {server.maxResponseTime > 0
+                        ? `${server.timingPrecision === 'high-precision'
+                            ? server.maxResponseTime.toFixed(3)
+                            : server.maxResponseTime.toFixed(1)}ms`
+                        : '--'}
+                    </span>
                   </TableCell>
                   <TableCell className="font-mono">
-                    {server.medianResponseTime > 0 ? `${server.medianResponseTime}ms` : '--'}
+                    {server.medianResponseTime > 0
+                      ? `${server.timingPrecision === 'high-precision'
+                          ? server.medianResponseTime.toFixed(3)
+                          : server.medianResponseTime.toFixed(1)}ms`
+                      : '--'}
                   </TableCell>
                 </TableRow>
               ))}
@@ -777,7 +816,16 @@ export function ResultsPage() {
                                         </Badge>
                                       </TableCell>
                                       <TableCell className="font-mono text-xs">
-                                        {result.responseTime ? `${result.responseTime}ms` : '--'}
+                                        <div className="flex items-center gap-1">
+                                          {result.success && result.timingMethod && (
+                                            <span className="text-xs">
+                                              {result.timingMethod === 'high-precision' ? '🎯' : '⏱️'}
+                                            </span>
+                                          )}
+                                          <span>
+                                            {result.responseTime ? `${result.responseTime}ms` : '--'}
+                                          </span>
+                                        </div>
                                       </TableCell>
                                       <TableCell className="font-mono text-xs">
                                         {result.responseCode || '--'}
@@ -832,7 +880,13 @@ export function ResultsPage() {
                       <div>
                         <strong>Error Type:</strong> {result.errorType || 'N/A'}<br/>
                         <strong>Response Code:</strong> {result.responseCode || 'N/A'}<br/>
-                        <strong>Response Time:</strong> {result.responseTime ? `${result.responseTime}ms` : 'N/A'}<br/>
+                        <strong>Response Time:</strong>
+                        {result.timingMethod && (
+                          <span className="mr-1">
+                            {result.timingMethod === 'high-precision' ? '🎯' : '⏱️'}
+                          </span>
+                        )}
+                        {result.responseTime ? `${result.responseTime}ms` : 'N/A'}<br/>
                         <strong>Query Time:</strong> {result.queryTime ? `${result.queryTime}ms` : 'N/A'}
                       </div>
                       <div>
@@ -1035,7 +1089,16 @@ export function ResultsPage() {
                                           </Badge>
                                         </TableCell>
                                         <TableCell className="font-mono text-xs">
-                                          {result.responseTime ? `${result.responseTime}ms` : '--'}
+                                          <div className="flex items-center gap-1">
+                                            {result.success && result.timingMethod && (
+                                              <span className="text-xs">
+                                                {result.timingMethod === 'high-precision' ? '🎯' : '⏱️'}
+                                              </span>
+                                            )}
+                                            <span>
+                                              {result.responseTime ? `${result.responseTime}ms` : '--'}
+                                            </span>
+                                          </div>
                                         </TableCell>
                                         <TableCell className="font-mono text-xs">
                                           {result.responseCode || '--'}

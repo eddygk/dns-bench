@@ -82,6 +82,13 @@ export interface WSBenchmarkResult {
     data: {
         testId: string;
         result: DomainTestResult;
+        timingMethod?: 'performance-observer' | 'manual-fallback';
+        metadata?: {
+            name: string;
+            duration: number;
+            startTime: number;
+            entryType: string;
+        };
     };
 }
 export interface WSBenchmarkComplete {
@@ -130,6 +137,13 @@ export interface DNSTestResult {
     success: boolean;
     error?: string;
     ip?: string;
+    performanceEntry?: {
+        name: string;
+        duration: number;
+        startTime: number;
+        entryType: string;
+    };
+    timingMethod?: 'performance-observer' | 'manual-fallback';
 }
 export interface TestStatus {
     testId: string;
@@ -154,6 +168,12 @@ export interface BenchmarkResult {
     totalQueries: number;
     successfulQueries: number;
     failedQueries: number;
+    timingPrecision?: 'performance-observer' | 'manual-fallback';
+    standardDeviation?: number;
+    confidenceInterval?: {
+        lower: number;
+        upper: number;
+    };
 }
 export interface CORSSettings {
     allowIPAccess: boolean;
@@ -202,5 +222,45 @@ export interface UpdatePublicDNSRequest {
 }
 export interface GetPublicDNSResponse {
     config: PublicDNSConfig;
+}
+export interface TestConfiguration {
+    domainCounts: {
+        quick: number;
+        full: number;
+        custom: number;
+    };
+    queryTypes: {
+        cached: boolean;
+        uncached: boolean;
+        dotcom: boolean;
+    };
+    performance: {
+        maxConcurrentServers: number;
+        queryTimeout: number;
+        maxRetries: number;
+        rateLimitMs: number;
+    };
+    analysis: {
+        detectRedirection: boolean;
+        detectMalwareBlocking: boolean;
+        testDNSSEC: boolean;
+        minReliabilityThreshold: number;
+    };
+}
+export interface UpdateTestConfigRequest {
+    config: TestConfiguration;
+}
+export interface GetTestConfigResponse {
+    config: TestConfiguration;
+}
+export interface DomainListConfig {
+    domains: string[];
+    lastModified: Date;
+}
+export interface UpdateDomainListRequest {
+    config: DomainListConfig;
+}
+export interface GetDomainListResponse {
+    config: DomainListConfig;
 }
 //# sourceMappingURL=types.d.ts.map

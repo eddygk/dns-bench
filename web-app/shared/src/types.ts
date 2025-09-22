@@ -92,6 +92,13 @@ export interface WSBenchmarkResult {
   data: {
     testId: string
     result: DomainTestResult
+    timingMethod?: 'high-precision' | 'fallback' | 'performance-observer' | 'manual-fallback'
+    metadata?: {
+      name: string
+      duration: number
+      startTime: number
+      entryType: string
+    }
   }
 }
 
@@ -157,6 +164,14 @@ export interface DNSTestResult {
   success: boolean
   error?: string
   ip?: string
+  responseCode?: string
+  authoritative?: boolean
+  queryTime?: number
+  errorType?: string
+  rawOutput?: string
+  ipResult?: string
+  // Updated timing method support
+  timingMethod?: 'high-precision' | 'fallback' | 'performance-observer' | 'manual-fallback'
 }
 
 export interface TestStatus {
@@ -183,6 +198,13 @@ export interface BenchmarkResult {
   totalQueries: number
   successfulQueries: number
   failedQueries: number
+  // Updated precision fields
+  timingPrecision?: 'high-precision' | 'fallback' | 'performance-observer' | 'manual-fallback'
+  standardDeviation?: number
+  confidenceInterval?: {
+    lower: number
+    upper: number
+  }
 }
 
 // CORS Configuration types
