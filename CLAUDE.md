@@ -203,22 +203,55 @@ Benchmarks against user-configurable public DNS providers (default configuration
 
 ## Development Commands
 
-### Docker Development
+### Fast Docker Development (Recommended)
 ```bash
-# Start development environment
-make dev
+# Optimized development with instant hot reloading
+make dev-fast      # Start optimized development environment
+make build-fast    # Build optimized development containers only
+make logs-fast     # View optimized development logs
+make status        # Check development environment status
 
-# Build all images
-make build
-
-# View logs
-make logs
-
-# Clean up
-make clean
+# Quick troubleshooting
+make clean && make dev-fast  # Clean restart for any issues
 ```
 
+### Standard Docker Development
+```bash
+# Traditional development workflow
+make dev       # Start development environment
+make build     # Build all images
+make logs      # View logs
+make clean     # Clean up
+```
+
+### Development Workflow Comparison
+| Method | Build Time | Code Changes | Use Case |
+|--------|------------|--------------|----------|
+| **make dev-fast** | ~30s initial | ⚡ Instant | Active development |
+| **make dev** | ~2-3 min | 🐌 Rebuild required | Testing/debugging |
+
+### Key Optimizations Applied
+- ✅ **Bind Mounts**: Source code mounted directly (no container rebuilds)
+- ✅ **Layer Caching**: Dependencies cached until package.json changes
+- ✅ **Hot Reloading**: Vite (frontend) + tsx watch (backend) for instant updates
+- ✅ **.dockerignore**: Reduced build context from 19.4MB to essentials
+- ✅ **Granular File Mounting**: Precise file mapping for better performance
+
 ### Manual Docker Commands
+
+**Fast Development:**
+```bash
+# Optimized development environment
+docker-compose -f docker-compose.dev.yml up -d
+
+# Build optimized containers
+docker-compose -f docker-compose.dev.yml build --parallel
+
+# View optimized logs
+docker-compose -f docker-compose.dev.yml logs -f
+```
+
+**Standard Development:**
 ```bash
 # Start all services
 docker-compose up -d

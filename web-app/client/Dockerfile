@@ -3,7 +3,7 @@
 
 ARG NODE_VERSION=20
 
-# Development stage
+# Development stage - optimized for fast iteration
 FROM node:${NODE_VERSION}-alpine AS development
 
 # Install necessary packages for development
@@ -17,23 +17,23 @@ WORKDIR /app
 COPY client/package*.json ./
 COPY shared/package*.json /shared/
 
-# Install dependencies
+# Install dependencies (this layer caches well)
 RUN npm install
 
-# Copy shared types
+# Copy shared types only (minimal, rarely changes)
 COPY shared /shared
-
-# Copy source code
-COPY client .
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S reactjs && \
     adduser -S reactjs -u 1001
 
-# Change ownership of app directory
+# Change ownership of app directory and shared
 RUN chown -R reactjs:reactjs /app /shared
 
 USER reactjs
+
+# NOTE: Source code is mounted via bind mount in docker-compose.yml
+# This eliminates the need to rebuild on code changes
 
 # Health check for development
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \

@@ -3,7 +3,7 @@
 
 ARG NODE_VERSION=20
 
-# Development stage
+# Development stage - optimized for fast iteration
 FROM node:${NODE_VERSION}-alpine AS development
 
 # Install system dependencies for DNS tools and native modules
@@ -21,14 +21,11 @@ WORKDIR /app
 COPY server/package*.json ./
 COPY shared/package*.json /shared/
 
-# Install dependencies
+# Install dependencies (this layer caches well)
 RUN npm install
 
-# Copy shared types
+# Copy shared types only (minimal, rarely changes)
 COPY shared /shared
-
-# Copy source code
-COPY server .
 
 # Create data directory with proper permissions
 RUN mkdir -p /app/data
@@ -41,6 +38,9 @@ RUN addgroup -g 1001 -S nodejs && \
 RUN chown -R nodejs:nodejs /app /shared
 
 USER nodejs
+
+# NOTE: Source code is mounted via bind mount in docker-compose.yml
+# This eliminates the need to rebuild on code changes
 
 # Health check for development
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

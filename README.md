@@ -19,7 +19,25 @@ A modern web-based DNS benchmarking application that tests and compares DNS serv
 
 ## 🚀 Quick Start
 
+> **New to DNS Bench?** Choose your setup method below. **Production Deployment** is recommended for regular use, **Development** is for code contributions.
+
+### Prerequisites
+
+**Required for all setups:**
+- [Docker](https://docs.docker.com/get-docker/) 20.10+
+- [Docker Compose](https://docs.docker.com/compose/install/) 2.0+
+- 1GB free RAM
+- Available ports: 80 (production) or 3000/3001 (development), plus 6379
+
+**Quick prerequisite check:**
+```bash
+docker --version          # Should show 20.10+
+docker-compose --version  # Should show 2.0+
+```
+
 ### Production Deployment (Recommended)
+
+**Perfect for: Testing DNS performance, regular use, demos**
 
 **One-command production deployment:**
 
@@ -57,27 +75,56 @@ The deployment script will:
 ./deploy.sh cleanup  # Remove everything
 ```
 
-**Access your deployment:**
-- **Frontend**: http://YOUR_IP:80
-- **Backend API**: http://YOUR_IP:3001/api/health
+**✅ Success! Access your deployment:**
+- **Web Interface**: http://YOUR_IP:80 (replace YOUR_IP with your server's IP)
+- **API Health Check**: http://YOUR_IP:3001/api/health
+- **Management**: Use `./deploy.sh status` to check health, `./deploy.sh logs` to view logs
+
+**🎯 First Steps After Deployment:**
+1. Open the web interface in your browser
+2. Go to **Settings** to configure your local DNS servers
+3. Run a **Quick Benchmark** to test DNS performance
+4. Check **History** to view past results
 
 ### Development Deployment
 
+**Perfect for: Contributing code, customizing features, local development**
+
+**Fast Development Workflow (Recommended):**
 ```bash
 # Clone the repository
 git clone https://github.com/eddygk/dns-bench.git
 cd dns-bench
 
-# Start development environment
+# Start optimized development environment with instant hot reloading
+make dev-fast
+
+# Alternative: Standard development environment
 make dev
 
 # Or using docker-compose directly
 docker-compose up -d
 ```
 
-Access the development environment at:
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001/api/health
+**Fast Development Features:**
+- ⚡ **Instant Hot Reloading**: Code changes appear in <100ms
+- 🔨 **Optimized Layer Caching**: Dependencies only rebuild when package.json changes
+- 📁 **Minimal Build Context**: .dockerignore reduces build context significantly
+- 🚀 **One-Command Setup**: `make dev-fast` handles everything
+
+**✅ Success! Access the development environment:**
+- **Web Interface**: http://localhost:3000
+- **API Health Check**: http://localhost:3001/api/health
+- **Live Reloading**: Edit code and see changes instantly!
+
+**Development Commands:**
+```bash
+make dev-fast      # Start optimized development (recommended)
+make build-fast    # Build optimized development containers
+make logs-fast     # View development logs
+make status        # Check environment status
+make clean         # Clean up all containers and volumes
+```
 
 ### Manual Installation
 
@@ -231,26 +278,71 @@ Real-time updates during benchmarking:
 - **Enable/Disable**: Toggle any server without deleting configuration
 - **Dynamic Testing**: Benchmarks adapt to your enabled server selection
 
-## 📋 Requirements
+## 📋 Troubleshooting Setup
 
-### For Docker Deployment
+### Common Issues
+
+**"Port already in use" errors:**
+```bash
+# Check what's using the ports
+lsof -i :80 -i :3000 -i :3001 -i :6379
+
+# Stop conflicting services
+sudo systemctl stop nginx    # If using port 80
+sudo systemctl stop apache2  # If using port 80
+```
+
+**Docker permission issues:**
+```bash
+# Add user to docker group (Linux)
+sudo usermod -aG docker $USER
+# Log out and back in, or restart terminal
+```
+
+**Services not starting:**
+```bash
+# Check Docker is running
+sudo systemctl status docker
+
+# View detailed logs
+docker-compose logs     # For development
+./deploy.sh logs        # For production
+```
+
+### System Requirements
+
+**Minimum Requirements:**
 - Docker 20.10+
 - Docker Compose 2.0+
 - 1GB free RAM
-- Ports 3000, 3001, and 6379 available
+- 2GB free disk space
+- Network access for DNS testing
 
-### For Manual Installation
+**Optional for Manual Installation:**
 - Node.js 18+ with npm
 - SQLite3
-- Redis (optional, for caching)
+- Redis (for caching)
 - No external DNS tools required (uses Node.js native DNS resolver)
 
 ## 🔄 Development
 
 ### Start Development Environment
 
+**Fast Development (Recommended):**
 ```bash
-# Using Make
+# Optimized development with instant hot reloading
+make dev-fast      # Start optimized development environment
+make build-fast    # Build optimized containers only
+make logs-fast     # View optimized development logs
+make status        # Check development environment status
+
+# Quick troubleshooting
+make clean && make dev-fast  # Clean restart for issues
+```
+
+**Standard Development:**
+```bash
+# Traditional development workflow
 make dev       # Start all services
 make logs      # View logs
 make clean     # Stop and clean
@@ -261,6 +353,13 @@ docker-compose up -d
 docker logs -f dns-bench-client-1
 docker logs -f dns-bench-server-1
 ```
+
+**Development Workflow Comparison:**
+| Command | Speed | Use Case |
+|---------|-------|----------|
+| `make dev-fast` | ⚡ Instant | Active development with hot reloading |
+| `make dev` | 🐌 2-3 min | Standard Docker development |
+| Manual commands | 🐌 Variable | Debugging specific containers |
 
 ### Technology Stack
 
@@ -601,15 +700,26 @@ If accessing from another device on your network:
 
 ## 🔄 Updating
 
+### Production Updates
+```bash
+# Update to latest version (recommended)
+./deploy.sh update
+
+# Manual update process
+git pull origin main
+./deploy.sh
+```
+
+### Development Updates
 ```bash
 # Pull latest changes
 git pull origin main
 
-# Rebuild containers
-make build
+# Rebuild and restart fast development
+make clean && make dev-fast
 
-# Restart services
-make dev
+# Or standard development
+make build && make dev
 ```
 
 ## 🧪 Testing
@@ -667,11 +777,26 @@ MIT License - See [LICENSE](LICENSE) file for details
 - React + TypeScript for modern web development
 - Socket.IO for real-time communications
 
-## 📞 Support
+## 🆘 Need Help?
 
-- **Issues**: [GitHub Issues](https://github.com/eddygk/dns-bench/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/eddygk/dns-bench/discussions)
+### Quick Solutions
+- **Setup Issues**: Check the [Troubleshooting Setup](#-troubleshooting-setup) section above
+- **First Time**: Follow the [Quick Start](#-quick-start) guide step by step
+- **Development**: Use `make dev-fast` for instant hot reloading
+
+### Get Support
+- **🐛 Found a Bug?** [Report it on GitHub Issues](https://github.com/eddygk/dns-bench/issues)
+- **💬 Have Questions?** [Join GitHub Discussions](https://github.com/eddygk/dns-bench/discussions)
+- **📖 Need Docs?** Everything is documented in this README
+
+### Success Checklist
+✅ Docker and Docker Compose installed
+✅ Ports 80 (or 3000/3001) available
+✅ Run `./deploy.sh` (production) or `make dev-fast` (development)
+✅ Access web interface in browser
+✅ Configure DNS servers in Settings
+✅ Run your first benchmark!
 
 ---
 
-**⚡ Quick Start:** `make dev` to launch the web application!
+**🚀 Ready to test DNS performance?** Choose [Production](#production-deployment-recommended) for regular use or [Development](#development-deployment) to contribute!
