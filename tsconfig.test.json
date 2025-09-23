@@ -1,0 +1,30 @@
+{
+  "extends": "./web-app/server/tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "types": ["jest", "node"],
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "paths": {
+      "@/*": ["./web-app/server/src/*"]
+    }
+  },
+  "include": [
+    "tests/**/*",
+    "web-app/server/src/**/*",
+    "web-app/shared/src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ]
+}

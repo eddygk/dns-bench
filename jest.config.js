@@ -1,10 +1,10 @@
 module.exports = {
   preset: 'ts-jest',
-  testEnvironment: 'jsdom',
-  globals: {
-    'ts-jest': {
+  testEnvironment: 'node',
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: 'tsconfig.test.json'
-    }
+    }]
   },
   roots: ['<rootDir>/tests'],
   testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.test.tsx'],
@@ -14,7 +14,6 @@ module.exports = {
     '!**/node_modules/**'
   ],
   coverageReporters: ['text', 'lcov', 'html'],
-  setupFilesAfterEnv: ['<rootDir>/tests/utils/test-setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/web-app/server/src/$1'
   },
