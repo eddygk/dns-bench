@@ -201,44 +201,52 @@ Benchmarks against user-configurable public DNS providers (default configuration
 - **Level3**: 4.2.2.1, 4.2.2.2 (disabled by default)
 - **Custom**: Users can add up to 20 total public DNS servers via Settings page
 
-## ✅ DOCKER-FIRST DEVELOPMENT - PRIMARY WORKFLOW
+## ✅ DOCKER-FIRST DEVELOPMENT - STANDARD WORKFLOW
 
-**IMPORTANT**: Development is now Docker-first. The application auto-starts in Docker containers. No local Node.js processes should be running.
+**IMPORTANT**: Development is now Docker-first with standard Docker practices. The application works reliably with standard `docker-compose up --build` (no workarounds needed).
 
-### Primary Docker Development (Optimized)
+### Standard Docker Development (Recommended)
 ```bash
-# Start optimized development environment (recommended)
-make dev-fast      # Uses docker-compose.dev.yml with granular bind mounts
+# Standard Docker workflow - works for anyone familiar with Docker
+# INCLUDES hot reloading via bind mounts per CEO directive
+docker-compose up --build    # Build and start all services with hot reload
+docker-compose down          # Stop all services
+docker-compose logs          # View logs
+
+# Alternative: Use convenience commands
+make dev       # Equivalent to docker-compose up --build
+make clean     # Clean shutdown and cleanup
+```
+
+### Optimized Development (Additional Options)
+```bash
+# Alternative development environment with additional optimizations
+make dev-fast      # Uses docker-compose.dev.yml with enhanced bind mounts
 make build-fast    # Build optimized development containers only
 make logs-fast     # View optimized development logs
 make status        # Check development environment status
-
-# Quick troubleshooting
-make clean && make dev-fast  # Clean restart for any issues
-```
-
-### Legacy Development Commands (Avoid)
-```bash
-# DO NOT USE: Traditional development workflow (deprecated)
-make dev       # Uses docker-compose.yml with full directory bind mounts
-make build     # Build all images
-make logs      # View logs
-make clean     # Clean up
 ```
 
 ### Development Workflow Comparison
 | Method | Build Time | Code Changes | Use Case | Status |
 |--------|------------|--------------|----------|---------|
-| **Docker (dev-fast)** | ~30s initial | ⚡ Instant | Active development | ✅ **PRIMARY** |
-| **Docker (legacy)** | ~2-3 min | 🐌 Rebuild required | Testing/debugging | ⚠️ **DEPRECATED** |
+| **Docker (standard)** | ~8 min initial, ~30s rebuild | ⚡ Instant hot reload | Standard development, onboarding | ✅ **RECOMMENDED** |
+| **Docker (dev-fast)** | ~30s initial | ⚡ Instant hot reload | Enhanced development environment | ✅ **ALTERNATIVE** |
 | **Local Node.js** | N/A | ⚡ Instant | N/A | ❌ **DISABLED** |
 
-### Key Optimizations Applied
-- ✅ **Bind Mounts**: Source code mounted directly (no container rebuilds)
-- ✅ **Layer Caching**: Dependencies cached until package.json changes
+### Standard Docker Features (CEO Directive Compliant)
+- ✅ **Fixed Build Issues**: Eliminated chown hanging problems via user-first installation pattern
+- ✅ **Standard Patterns**: Follows Docker best practices for user management and layer optimization
+- ✅ **Bind Mounts**: DIRECTIVE 1 - Source code bind mounted for instant changes
+- ✅ **Anonymous Volumes**: DIRECTIVE 2 - node_modules preserved via `/app/node_modules`
 - ✅ **Hot Reloading**: Vite (frontend) + tsx watch (backend) for instant updates
-- ✅ **.dockerignore**: Reduced build context from 19.4MB to essentials
-- ✅ **Granular File Mounting**: Precise file mapping for better performance
+- ✅ **Layer Caching**: Dependencies cached until package.json changes
+- ✅ **No Workarounds**: Works with standard `docker-compose up --build` (~8 minutes first build)
+- ✅ **Reliable Rebuilds**: Consistent ~30 second rebuild times with proper layer caching
+
+### Dev-Fast Additional Features
+- ✅ **Enhanced Bind Mounts**: More granular file mapping
+- ✅ **Optimized Build Context**: .dockerignore reduces build size
 
 ### Manual Docker Commands
 

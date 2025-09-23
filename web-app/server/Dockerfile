@@ -36,8 +36,8 @@ RUN npm install
 # Copy shared types only (minimal, rarely changes)
 COPY --chown=nodejs:nodejs shared /shared
 
-# NOTE: Source code is mounted via bind mount in docker-compose.yml
-# This eliminates the need to rebuild on code changes
+# Copy source code
+COPY --chown=nodejs:nodejs server ./
 
 # Health check for development
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

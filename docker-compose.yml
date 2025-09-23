@@ -9,8 +9,16 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./web-app/client:/app
+      # DIRECTIVE 1: Bind mount source code for hot reloading
+      - ./web-app/client/src:/app/src
+      - ./web-app/client/public:/app/public
+      - ./web-app/client/index.html:/app/index.html
+      - ./web-app/client/vite.config.ts:/app/vite.config.ts
+      - ./web-app/client/tailwind.config.js:/app/tailwind.config.js
+      - ./web-app/client/postcss.config.js:/app/postcss.config.js
+      # DIRECTIVE 2: Anonymous volume to preserve container's node_modules
       - /app/node_modules
+      # Shared types
       - ./web-app/shared:/shared
     environment:
       - NODE_ENV=development
@@ -29,9 +37,15 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./web-app/server:/app
+      # DIRECTIVE 1: Bind mount source code for hot reloading
+      - ./web-app/server/src:/app/src
+      - ./web-app/server/local-dns.json:/app/local-dns.json
+      - ./web-app/server/public-dns.json:/app/public-dns.json
+      # DIRECTIVE 2: Anonymous volume to preserve container's node_modules
       - /app/node_modules
+      # Shared types
       - ./web-app/shared:/shared
+      # Data directory
       - ./data:/app/data
     environment:
       - NODE_ENV=development

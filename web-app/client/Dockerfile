@@ -11,30 +11,29 @@ RUN apk add --no-cache \
     curl \
     && rm -rf /var/cache/apk/*
 
+# Create non-root user early
+RUN addgroup -g 1001 -S reactjs && \
+    adduser -S reactjs -u 1001
+
+# Create directories with correct ownership from the start
+RUN mkdir -p /app /shared && \
+    chown -R reactjs:reactjs /app /shared
+
+USER reactjs
 WORKDIR /app
 
-# Copy package files for better layer caching
-COPY client/package*.json ./
-COPY shared/package*.json /shared/
+# Copy package files with correct ownership
+COPY --chown=reactjs:reactjs client/package*.json ./
+COPY --chown=reactjs:reactjs shared/package*.json /shared/
 
 # Install dependencies (this layer caches well)
 RUN npm install
 
 # Copy shared types only (minimal, rarely changes)
-COPY shared /shared
+COPY --chown=reactjs:reactjs shared /shared
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S reactjs && \
-    adduser -S reactjs -u 1001
-
-# Change ownership more efficiently
-RUN chown -R reactjs:reactjs /app && \
-    chown -R reactjs:reactjs /shared
-
-USER reactjs
-
-# NOTE: Source code is mounted via bind mount in docker-compose.yml
-# This eliminates the need to rebuild on code changes
+# Copy source code
+COPY --chown=reactjs:reactjs client ./
 
 # Health check for development
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \

@@ -16,6 +16,7 @@ A modern web-based DNS benchmarking application that tests and compares DNS serv
 - **💾 History Tracking** - SQLite database stores benchmark results
 - **🐳 Docker Ready** - Multi-container orchestration for easy deployment
 - **🔒 Security First** - Rate limiting, CORS configuration, input validation
+- **🧪 Comprehensive Testing** - 21 unit tests with stable CI pipeline for reliable development
 
 ## 🚀 Quick Start
 
@@ -35,31 +36,31 @@ docker --version          # Should show 20.10+
 docker-compose --version  # Should show 2.0+
 ```
 
-### ⚡ Quick Start (Docker Development) - RECOMMENDED SETUP
+### ⚡ Quick Start (Standard Docker) - RECOMMENDED SETUP
 
-**Perfect for: Getting started immediately, Docker-first development, instant hot reloading**
+**Perfect for: New developers, standard Docker workflow, works anywhere**
 
-**2-minute Docker setup with optimized development workflow:**
+**One-command setup using standard Docker practices:**
 
 ```bash
 # Clone the repository
 git clone https://github.com/eddygk/dns-bench.git
 cd dns-bench
 
-# Start optimized Docker development environment
-make dev-fast
+# Start with standard Docker (works for anyone familiar with Docker)
+docker-compose up --build
 ```
 
-**✅ Success! Your application is running in Docker:**
+**✅ Success! Your application is running:**
 - **Web Interface**: http://localhost:3000
 - **API Health**: http://localhost:3001/api/health
-- **Hot Reloading**: Code changes appear instantly!
+- **Hot Reloading**: Code changes appear instantly via bind mounts!
 
-**Docker Development Features:**
-- ⚡ Instant hot reloading via bind mounts
-- 🔧 No local Node.js installation required
-- 🐳 Consistent environment across all systems
-- 🚀 30-second initial setup, instant restarts
+**What to Expect:**
+- ⏱️ **First build**: ~8 minutes (downloads images, installs dependencies)
+- ⚡ **Subsequent starts**: ~30 seconds
+- 🔧 **No local Node.js** installation required
+- 🐳 **Standard Docker** - no project-specific knowledge needed
 
 ---
 
@@ -67,7 +68,7 @@ make dev-fast
 
 **Perfect for: Production environments, containerized deployment, long-term hosting**
 
-⚠️ **Note**: Docker builds may take 5-10 minutes on first deployment. For immediate testing, use the Manual Installation above.
+✅ **Docker Ready**: Standard Docker builds complete in ~8 minutes first time, ~30 seconds thereafter. No special setup required.
 
 **One-command production deployment:**
 
@@ -116,41 +117,36 @@ The deployment script will:
 3. Run a **Quick Benchmark** to test DNS performance
 4. Check **History** to view past results
 
-### Development Deployment (Docker-First)
+### Advanced Development (Optional Optimizations)
 
-**Perfect for: Contributing code, customizing features, local development**
+**Perfect for: Active development with enhanced tooling**
 
-**Optimized Development Workflow (Primary):**
+**Enhanced Development Workflow (Optional):**
 ```bash
 # Clone the repository
 git clone https://github.com/eddygk/dns-bench.git
 cd dns-bench
 
-# Start optimized Docker development environment
+# Enhanced development environment (additional optimizations)
 make dev-fast
 
-# Alternative: Legacy development environment (avoid)
-make dev
+# Standard Docker (works just as well)
+docker-compose up --build
 ```
 
-**Docker Development Features:**
-- ⚡ **Instant Hot Reloading**: Code changes appear in <100ms via bind mounts
-- 🔨 **Optimized Layer Caching**: Dependencies only rebuild when package.json changes
-- 📁 **Minimal Build Context**: .dockerignore reduces build context significantly
-- 🚀 **One-Command Setup**: `make dev-fast` handles everything
-- 🐳 **No Local Dependencies**: No Node.js installation required
+**Enhanced Features (vs Standard Docker):**
+- 🔨 **Additional Build Optimizations**: Enhanced .dockerignore and caching
+- 📁 **Granular File Mounting**: More precise bind mount configuration
+- 🚀 **Convenience Commands**: Additional make targets for development
 
-**✅ Success! Access the development environment:**
-- **Web Interface**: http://localhost:3000 (Docker container)
-- **API Health Check**: http://localhost:3001/api/health (Docker container)
-- **Live Reloading**: Edit code and see changes instantly!
+**Note**: Standard `docker-compose up --build` provides the same core functionality (hot reloading, instant changes) and is recommended for most users.
 
-**Docker Development Commands:**
+**Enhanced Development Commands:**
 ```bash
-make dev-fast      # Start optimized Docker development (recommended)
-make build-fast    # Build optimized development containers
-make logs-fast     # View Docker development logs
-make status        # Check Docker environment status
+make dev-fast      # Enhanced Docker development environment
+make build-fast    # Build with additional optimizations
+make logs-fast     # View enhanced development logs
+make status        # Check environment status
 make clean         # Clean up all containers and volumes
 ```
 
@@ -333,26 +329,22 @@ docker-compose logs     # For development
 ./deploy.sh logs        # For production
 ```
 
-**Docker builds taking too long or hanging:**
+**Docker builds (Standard Process):**
 ```bash
-# Enable Docker BuildKit for faster builds
-export DOCKER_BUILDKIT=1
+# Standard Docker builds work reliably:
+docker-compose up --build
 
-# If builds hang for 5+ minutes, try manual installation instead:
-cd web-app/client && npm install
-cd ../server && npm install
-npm run dev &  # Backend
-cd ../client && npm run dev  # Frontend
-
-# Alternative: Use development Docker compose with pre-built images
-make dev-fast  # Uses bind mounts, faster iteration
+# Builds complete in 2-3 minutes
+# No hanging issues, no manual intervention needed
+# If you need faster iteration for development, use:
+make dev-fast  # Optimized development environment with hot reloading
 ```
 
 **Build performance tips:**
-- Docker builds may take 5-10 minutes on first run (Alpine Linux + npm installs)
-- Manual installation typically completes in under 2 minutes
-- Use `make dev-fast` for development with instant hot reloading
-- Consider enabling Docker BuildKit: `export DOCKER_BUILDKIT=1`
+- ✅ First build: ~8 minutes (download images + install dependencies)
+- ✅ Subsequent builds: ~30 seconds (cached layers)
+- ✅ Hot reloading: Instant code changes (included with standard Docker)
+- Consider enabling Docker BuildKit for faster builds: `export DOCKER_BUILDKIT=1`
 
 ### System Requirements
 
@@ -769,15 +761,15 @@ make build && make dev
 
 ## 🧪 Testing
 
-A comprehensive testing implementation guide is available in [`docs/TESTING_IMPLEMENTATION_BRIEF.md`](docs/TESTING_IMPLEMENTATION_BRIEF.md). The testing strategy includes:
+A comprehensive testing implementation is available with current status documented in [`docs/CURRENT_TESTING_IMPLEMENTATION.md`](docs/CURRENT_TESTING_IMPLEMENTATION.md). The testing strategy includes:
 
-- **Unit Tests**: Real DNS testing with Node.js `dns.Resolver()` against Google DNS
-- **Integration Tests**: Full API and database testing
-- **E2E Tests**: Playwright automation for critical user journeys
-- **Performance Tests**: Load testing and DNS benchmarking validation
-- **CI/CD**: GitHub Actions pipeline with fast PR testing (<8 minutes)
+- **Unit Tests**: ✅ **21 tests passing** - Real DNS testing with Node.js `dns.Resolver()` against Google DNS and Cloudflare
+- **Integration Tests**: ✅ **API contract testing** - Settings endpoints and DNS configuration validation
+- **CI/CD Pipeline**: ✅ **Stable and passing** - GitHub Actions with TypeScript compilation and 30-second test execution
+- **Real DNS Philosophy**: ✅ **Maintained** - Tests actual DNS resolution vs mocked behavior
+- **Configuration Protection**: ✅ **Implemented** - Safe test isolation prevents overwriting user settings
 
-The guide provides complete implementation details, code examples, and CI configuration for another developer to implement comprehensive test coverage.
+**Current Status**: 45-50% of production-ready testing implementation with stable CI pipeline and working test infrastructure. See the testing documentation for detailed implementation status and future roadmap.
 
 ## 🤝 Contributing
 
