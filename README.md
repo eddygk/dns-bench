@@ -35,9 +35,39 @@ docker --version          # Should show 20.10+
 docker-compose --version  # Should show 2.0+
 ```
 
-### Production Deployment (Recommended)
+### ⚡ Quick Start (Docker Development) - RECOMMENDED SETUP
 
-**Perfect for: Testing DNS performance, regular use, demos**
+**Perfect for: Getting started immediately, Docker-first development, instant hot reloading**
+
+**2-minute Docker setup with optimized development workflow:**
+
+```bash
+# Clone the repository
+git clone https://github.com/eddygk/dns-bench.git
+cd dns-bench
+
+# Start optimized Docker development environment
+make dev-fast
+```
+
+**✅ Success! Your application is running in Docker:**
+- **Web Interface**: http://localhost:3000
+- **API Health**: http://localhost:3001/api/health
+- **Hot Reloading**: Code changes appear instantly!
+
+**Docker Development Features:**
+- ⚡ Instant hot reloading via bind mounts
+- 🔧 No local Node.js installation required
+- 🐳 Consistent environment across all systems
+- 🚀 30-second initial setup, instant restarts
+
+---
+
+### Production Deployment (Docker)
+
+**Perfect for: Production environments, containerized deployment, long-term hosting**
+
+⚠️ **Note**: Docker builds may take 5-10 minutes on first deployment. For immediate testing, use the Manual Installation above.
 
 **One-command production deployment:**
 
@@ -86,59 +116,53 @@ The deployment script will:
 3. Run a **Quick Benchmark** to test DNS performance
 4. Check **History** to view past results
 
-### Development Deployment
+### Development Deployment (Docker-First)
 
 **Perfect for: Contributing code, customizing features, local development**
 
-**Fast Development Workflow (Recommended):**
+**Optimized Development Workflow (Primary):**
 ```bash
 # Clone the repository
 git clone https://github.com/eddygk/dns-bench.git
 cd dns-bench
 
-# Start optimized development environment with instant hot reloading
+# Start optimized Docker development environment
 make dev-fast
 
-# Alternative: Standard development environment
+# Alternative: Legacy development environment (avoid)
 make dev
-
-# Or using docker-compose directly
-docker-compose up -d
 ```
 
-**Fast Development Features:**
-- ⚡ **Instant Hot Reloading**: Code changes appear in <100ms
+**Docker Development Features:**
+- ⚡ **Instant Hot Reloading**: Code changes appear in <100ms via bind mounts
 - 🔨 **Optimized Layer Caching**: Dependencies only rebuild when package.json changes
 - 📁 **Minimal Build Context**: .dockerignore reduces build context significantly
 - 🚀 **One-Command Setup**: `make dev-fast` handles everything
+- 🐳 **No Local Dependencies**: No Node.js installation required
 
 **✅ Success! Access the development environment:**
-- **Web Interface**: http://localhost:3000
-- **API Health Check**: http://localhost:3001/api/health
+- **Web Interface**: http://localhost:3000 (Docker container)
+- **API Health Check**: http://localhost:3001/api/health (Docker container)
 - **Live Reloading**: Edit code and see changes instantly!
 
-**Development Commands:**
+**Docker Development Commands:**
 ```bash
-make dev-fast      # Start optimized development (recommended)
+make dev-fast      # Start optimized Docker development (recommended)
 make build-fast    # Build optimized development containers
-make logs-fast     # View development logs
-make status        # Check environment status
+make logs-fast     # View Docker development logs
+make status        # Check Docker environment status
 make clean         # Clean up all containers and volumes
 ```
 
-### Manual Installation
+### Manual Installation (Legacy - Not Recommended)
+
+⚠️ **Note**: Manual installation is deprecated. Use Docker development instead.
 
 ```bash
-# Install dependencies for frontend
-cd web-app/client
-npm install
-
-# Install dependencies for backend
-cd ../server
-npm install
-
-# Start both services
-npm run dev  # In both directories
+# Only use if Docker is not available
+cd web-app/client && npm install
+cd ../server && npm install
+npm run dev  # Start both services manually
 ```
 
 ## 📊 Web Interface
@@ -309,6 +333,27 @@ docker-compose logs     # For development
 ./deploy.sh logs        # For production
 ```
 
+**Docker builds taking too long or hanging:**
+```bash
+# Enable Docker BuildKit for faster builds
+export DOCKER_BUILDKIT=1
+
+# If builds hang for 5+ minutes, try manual installation instead:
+cd web-app/client && npm install
+cd ../server && npm install
+npm run dev &  # Backend
+cd ../client && npm run dev  # Frontend
+
+# Alternative: Use development Docker compose with pre-built images
+make dev-fast  # Uses bind mounts, faster iteration
+```
+
+**Build performance tips:**
+- Docker builds may take 5-10 minutes on first run (Alpine Linux + npm installs)
+- Manual installation typically completes in under 2 minutes
+- Use `make dev-fast` for development with instant hot reloading
+- Consider enabling Docker BuildKit: `export DOCKER_BUILDKIT=1`
+
 ### System Requirements
 
 **Minimum Requirements:**
@@ -355,11 +400,11 @@ docker logs -f dns-bench-server-1
 ```
 
 **Development Workflow Comparison:**
-| Command | Speed | Use Case |
-|---------|-------|----------|
-| `make dev-fast` | ⚡ Instant | Active development with hot reloading |
-| `make dev` | 🐌 2-3 min | Standard Docker development |
-| Manual commands | 🐌 Variable | Debugging specific containers |
+| Command | Speed | Use Case | Status |
+|---------|-------|----------|---------|
+| `make dev-fast` | ⚡ Instant | Active Docker development with hot reloading | ✅ **PRIMARY** |
+| `make dev` | 🐌 2-3 min | Legacy Docker development | ⚠️ **DEPRECATED** |
+| Manual Node.js | 🐌 Variable | Local development (not recommended) | ❌ **DISABLED** |
 
 ### Technology Stack
 

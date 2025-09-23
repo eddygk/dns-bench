@@ -1,0 +1,18 @@
+[Unit]
+Description=DNS Bench Development Environment
+Requires=docker.service
+After=docker.service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+WorkingDirectory=/home/ansible/dns-bench
+ExecStart=/usr/local/bin/docker-compose -f docker-compose.dev.yml up -d
+ExecStop=/usr/local/bin/docker-compose -f docker-compose.dev.yml down
+User=ansible
+Group=docker
+
+[Install]
+WantedBy=multi-user.target

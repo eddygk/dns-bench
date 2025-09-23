@@ -201,12 +201,14 @@ Benchmarks against user-configurable public DNS providers (default configuration
 - **Level3**: 4.2.2.1, 4.2.2.2 (disabled by default)
 - **Custom**: Users can add up to 20 total public DNS servers via Settings page
 
-## Development Commands
+## ✅ DOCKER-FIRST DEVELOPMENT - PRIMARY WORKFLOW
 
-### Fast Docker Development (Recommended)
+**IMPORTANT**: Development is now Docker-first. The application auto-starts in Docker containers. No local Node.js processes should be running.
+
+### Primary Docker Development (Optimized)
 ```bash
-# Optimized development with instant hot reloading
-make dev-fast      # Start optimized development environment
+# Start optimized development environment (recommended)
+make dev-fast      # Uses docker-compose.dev.yml with granular bind mounts
 make build-fast    # Build optimized development containers only
 make logs-fast     # View optimized development logs
 make status        # Check development environment status
@@ -215,20 +217,21 @@ make status        # Check development environment status
 make clean && make dev-fast  # Clean restart for any issues
 ```
 
-### Standard Docker Development
+### Legacy Development Commands (Avoid)
 ```bash
-# Traditional development workflow
-make dev       # Start development environment
+# DO NOT USE: Traditional development workflow (deprecated)
+make dev       # Uses docker-compose.yml with full directory bind mounts
 make build     # Build all images
 make logs      # View logs
 make clean     # Clean up
 ```
 
 ### Development Workflow Comparison
-| Method | Build Time | Code Changes | Use Case |
-|--------|------------|--------------|----------|
-| **make dev-fast** | ~30s initial | ⚡ Instant | Active development |
-| **make dev** | ~2-3 min | 🐌 Rebuild required | Testing/debugging |
+| Method | Build Time | Code Changes | Use Case | Status |
+|--------|------------|--------------|----------|---------|
+| **Docker (dev-fast)** | ~30s initial | ⚡ Instant | Active development | ✅ **PRIMARY** |
+| **Docker (legacy)** | ~2-3 min | 🐌 Rebuild required | Testing/debugging | ⚠️ **DEPRECATED** |
+| **Local Node.js** | N/A | ⚡ Instant | N/A | ❌ **DISABLED** |
 
 ### Key Optimizations Applied
 - ✅ **Bind Mounts**: Source code mounted directly (no container rebuilds)
@@ -264,17 +267,20 @@ docker logs dns-bench_client_1
 docker logs dns-bench_server_1
 ```
 
-### Access Points
+### Docker Access Points (Running)
 ```bash
-# Frontend (React App)
+# Frontend (React App) - Docker Container
 http://localhost:3000
 
-# Backend API
+# Backend API - Docker Container
 http://localhost:3001/api/health
 http://localhost:3001/api/dns/current
 
-# Redis Cache
+# Redis Cache - Docker Container
 localhost:6379
+
+# Check containers: docker ps
+# View logs: docker logs dns-bench_server_1
 ```
 
 ### Testing with Playwright
@@ -285,8 +291,11 @@ localhost:6379
 
 ## Important Implementation Notes
 
-### Web Application
-- Frontend served by Vite development server with hot reloading
+### Web Application (Docker-First)
+- ✅ **Docker Containers**: Frontend and backend run in Docker containers with bind mounts
+- ✅ **Auto-Start**: Containers auto-start and provide instant hot reloading via bind mounts
+- ✅ **File Permissions**: Config files (local-dns.json, public-dns.json) have 666 permissions for container write access
+- Frontend served by Vite development server with hot reloading in Docker
 - Backend uses Express.js with TypeScript and comprehensive error handling
 - WebSocket connections provide sub-100ms real-time updates
 - PostCSS configuration required for Tailwind CSS processing

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
-  Wifi,
+  Globe,
   Home,
   Activity,
   History,
@@ -77,7 +77,7 @@ export function Layout({ children }: LayoutProps) {
       >
         <div className="flex h-16 items-center px-4">
           <Link to="/" className="flex items-center space-x-2">
-            <Wifi className="h-6 w-6" />
+            <Globe className="h-6 w-6" />
             <h1 className="text-xl font-semibold">DNS Bench</h1>
           </Link>
 
@@ -130,7 +130,7 @@ export function Layout({ children }: LayoutProps) {
               <SheetContent side="left" className="w-[280px] sm:w-[320px]">
                 <SheetHeader className="items-start">
                   <SheetTitle className="flex items-center space-x-2">
-                    <Wifi className="h-5 w-5" />
+                    <Globe className="h-5 w-5" />
                     <span className="text-base font-semibold">DNS Bench</span>
                   </SheetTitle>
                 </SheetHeader>

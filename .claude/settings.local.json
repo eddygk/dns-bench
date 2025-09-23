@@ -47,7 +47,9 @@
       "mcp__github__list_workflows",
       "mcp__github__list_workflow_runs",
       "mcp__github__get_job_logs",
-      "WebFetch(domain:www.anthropic.com)"
+      "WebFetch(domain:www.anthropic.com)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)"
     ],
     "deny": [],
     "ask": []

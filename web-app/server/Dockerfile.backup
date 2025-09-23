@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Optimized Dockerfile for Node.js backend - avoids chown issues
+# Multi-stage Dockerfile for Node.js backend
 
 ARG NODE_VERSION=20
 
@@ -15,26 +15,30 @@ RUN apk add --no-cache \
     curl \
     && rm -rf /var/cache/apk/*
 
-# Create non-root user early
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Create directories with correct ownership from the start
-RUN mkdir -p /app /shared /app/data && \
-    chown -R nodejs:nodejs /app /shared
-
-USER nodejs
 WORKDIR /app
 
-# Copy package files with correct ownership
-COPY --chown=nodejs:nodejs server/package*.json ./
-COPY --chown=nodejs:nodejs shared/package*.json /shared/
+# Copy package files for better layer caching
+COPY server/package*.json ./
+COPY shared/package*.json /shared/
 
 # Install dependencies (this layer caches well)
 RUN npm install
 
 # Copy shared types only (minimal, rarely changes)
-COPY --chown=nodejs:nodejs shared /shared
+COPY shared /shared
+
+# Create data directory with proper permissions
+RUN mkdir -p /app/data
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Change ownership more efficiently
+RUN chown -R nodejs:nodejs /app && \
+    chown -R nodejs:nodejs /shared
+
+USER nodejs
 
 # NOTE: Source code is mounted via bind mount in docker-compose.yml
 # This eliminates the need to rebuild on code changes

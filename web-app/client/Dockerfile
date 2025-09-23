@@ -27,8 +27,9 @@ COPY shared /shared
 RUN addgroup -g 1001 -S reactjs && \
     adduser -S reactjs -u 1001
 
-# Change ownership of app directory and shared
-RUN chown -R reactjs:reactjs /app /shared
+# Change ownership more efficiently
+RUN chown -R reactjs:reactjs /app && \
+    chown -R reactjs:reactjs /shared
 
 USER reactjs
 

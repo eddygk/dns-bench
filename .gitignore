@@ -39,3 +39,4 @@ dstop.sh
 
 # Build output (generated during client build)
 web-app/client/dist/
+CONTEXT_NOTES.md

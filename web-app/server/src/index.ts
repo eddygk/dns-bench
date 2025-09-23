@@ -1,3 +1,4 @@
+// Hot reload test - Docker development
 import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
@@ -61,6 +62,13 @@ app.use(helmet())
 app.use(compression())
 app.use(cors({
   origin: async (origin, callback) => {
+    // In development, allow all origins to support custom hostnames
+    if (process.env.NODE_ENV === 'development') {
+      callback(null, true)
+      return
+    }
+
+    // In production, use the settings service for CORS validation
     try {
       const settings = await settingsService.loadSettings()
       const isAllowed = settingsService.checkOrigin(origin, settings.cors)

@@ -13,6 +13,8 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0', // Allow network access
+    allowedHosts: true, // Allow any hostname (disables host checking)
+    // Note: This allows users to add custom hostnames dynamically via Settings
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

@@ -1,0 +1,11 @@
+{
+  "cors": {
+    "allowIPAccess": true,
+    "allowHostnameAccess": true,
+    "customOrigins": [
+      "dns-bench"
+    ]
+  },
+  "port": 3001,
+  "logLevel": "info"
+}
