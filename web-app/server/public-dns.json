@@ -61,7 +61,7 @@
       "name": "OpenDNS Secondary",
       "ip": "208.67.220.220",
       "provider": "OpenDNS",
-      "enabled": false,
+      "enabled": true,
       "isPrimary": false
     },
     {
