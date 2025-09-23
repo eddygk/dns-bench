@@ -59,6 +59,7 @@ docker-compose up --build
 **What to Expect:**
 - ⏱️ **First build**: ~8 minutes (downloads images, installs dependencies)
 - ⚡ **Subsequent starts**: ~30 seconds
+- 🔄 **Auto-restart**: Containers survive host reboots and crashes (restart: unless-stopped)
 - 🔧 **No local Node.js** installation required
 - 🐳 **Standard Docker** - no project-specific knowledge needed
 

@@ -243,6 +243,7 @@ make status        # Check development environment status
 - ✅ **Layer Caching**: Dependencies cached until package.json changes
 - ✅ **No Workarounds**: Works with standard `docker-compose up --build` (~8 minutes first build)
 - ✅ **Reliable Rebuilds**: Consistent ~30 second rebuild times with proper layer caching
+- ✅ **Auto-restart**: Containers restart automatically (restart: unless-stopped) - survive host reboots
 
 ### Dev-Fast Additional Features
 - ✅ **Enhanced Bind Mounts**: More granular file mapping

@@ -6,6 +6,7 @@ services:
       context: ./web-app
       dockerfile: client/Dockerfile
       target: development
+    restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
@@ -34,6 +35,7 @@ services:
       context: ./web-app
       dockerfile: server/Dockerfile
       target: development
+    restart: unless-stopped
     ports:
       - "3001:3001"
     volumes:
@@ -64,6 +66,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -88,6 +91,7 @@ services:
       context: ./web-app
       dockerfile: client/Dockerfile
       target: production
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
@@ -102,6 +106,7 @@ services:
       context: ./web-app
       dockerfile: server/Dockerfile
       target: production
+    restart: unless-stopped
     ports:
       - "3001:3001"
     environment:
