@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -41,23 +41,34 @@ export function HistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const isLoadingRef = useRef(false)
 
   useEffect(() => {
-    fetchHistory()
+    if (!isLoadingRef.current) {
+      fetchHistory()
+    }
   }, [])
 
   const fetchHistory = async () => {
+    if (isLoadingRef.current) {
+      return
+    }
+
     try {
+      isLoadingRef.current = true
       setLoading(true)
+      setError(null)
       const response = await apiRequest('/api/results?limit=20&offset=0')
       if (!response.ok) {
-        throw new Error('Failed to fetch history')
+        const errorText = await response.text()
+        throw new Error(`Failed to fetch history: ${response.status} ${response.statusText}`)
       }
       const data = await response.json()
       setHistory(data.results || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load history')
     } finally {
+      isLoadingRef.current = false
       setLoading(false)
     }
   }

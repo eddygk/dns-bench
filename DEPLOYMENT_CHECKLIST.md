@@ -126,6 +126,50 @@ git pull
 ./deploy.sh cleanup
 ```
 
+## Development vs Production Configuration
+
+### ⚠️ Critical Rate Limiting Differences
+
+**Development Environment:**
+- Rate limit: **1000 requests per 15 minutes**
+- Allows for React hot reloading, debugging, multiple page visits
+- Configured via `NODE_ENV=development`
+
+**Production Environment:**
+- Rate limit: **100 requests per 15 minutes**
+- Appropriate for real users and security
+- Automatically applied when `NODE_ENV=production`
+
+**Key Files:**
+```javascript
+// /web-app/server/src/index.ts
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100,
+  message: 'Too many requests from this IP, please try again later.'
+})
+```
+
+### 🔧 Deployment Environment Variables
+
+**Critical:** Ensure `NODE_ENV` is properly set during deployment:
+
+```bash
+# Development (Docker)
+NODE_ENV=development  # High rate limits for testing
+
+# Production (Docker)
+NODE_ENV=production   # Strict rate limits for security
+```
+
+**Verification:**
+```bash
+# Check current environment
+docker exec dns-bench-backend sh -c 'echo $NODE_ENV'
+
+# Should return "production" in production deployments
+```
+
 ## Troubleshooting
 
 ### Common Issues and Solutions
@@ -167,6 +211,35 @@ sudo chown -R $USER:$USER ./data ./config
 chmod +x deploy.sh
 ```
 
+**Rate limiting errors (HTTP 429):**
+```bash
+# Symptom: "Too many requests from this IP" or "Failed to fetch history"
+# Root cause: Multiple API calls from React development patterns
+
+# Check current environment
+docker exec dns-bench-backend sh -c 'echo $NODE_ENV'
+
+# If production but in development, update environment:
+docker-compose down
+# Edit docker-compose.yml to set NODE_ENV=development
+docker-compose up -d
+
+# Or wait for rate limit reset (15 minutes)
+
+# Long-term fix: Ensure proper environment configuration
+```
+
+**React development issues (duplicate API calls):**
+```bash
+# Symptom: Multiple "Fetching from API..." console messages
+# Root cause: React StrictMode double-rendering or hot reload
+
+# This is normal in development and handled by:
+# 1. useRef guards preventing duplicate requests
+# 2. Higher development rate limits (1000 vs 100)
+# 3. Proper component lifecycle management
+```
+
 ### Performance Verification
 
 **Expected Performance:**
@@ -197,7 +270,9 @@ docker stats --no-stream
 
 ### Application Security
 - [ ] CORS is properly configured for your domain
-- [ ] Rate limiting is active
+- [ ] Rate limiting is active and environment-appropriate:
+  - [ ] **Production**: 100 requests/15min (`NODE_ENV=production`)
+  - [ ] **Development**: 1000 requests/15min (`NODE_ENV=development`)
 - [ ] Input validation is working
 - [ ] No debug information exposed in production
 - [ ] SSL/TLS configured (if using reverse proxy)
