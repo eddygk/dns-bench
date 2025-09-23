@@ -32,7 +32,6 @@ describe('DNS Core Functionality', () => {
     it('should handle DNS timeout properly', async () => {
       const resolver = new dns.Resolver();
       resolver.setServers(['192.0.2.1']); // TEST-NET-1, should timeout
-      resolver.setTimeout(100);
 
       const resolve4 = promisify(resolver.resolve4).bind(resolver);
 
@@ -125,7 +124,7 @@ describe('DNS Core Functionality', () => {
             server,
             domain,
             success: false,
-            error: error.message,
+            error: (error as Error).message,
             responseTime: durationMs
           };
         }
@@ -140,7 +139,7 @@ describe('DNS Core Functionality', () => {
 
       if (result.success) {
         expect(result.addresses).toBeDefined();
-        expect(result.addresses.length).toBeGreaterThan(0);
+        expect(result.addresses?.length).toBeGreaterThan(0);
       }
 
       expect(result.responseTime).toBeGreaterThan(0);
@@ -161,7 +160,7 @@ describe('DNS Core Functionality', () => {
           const addresses = await resolve4(domain);
           results.push({ domain, success: true, addresses });
         } catch (error) {
-          results.push({ domain, success: false, error: error.message });
+          results.push({ domain, success: false, error: (error as Error).message });
         }
       }
 
@@ -170,7 +169,7 @@ describe('DNS Core Functionality', () => {
 
       successfulResults.forEach(result => {
         expect(result.addresses).toBeDefined();
-        expect(result.addresses.length).toBeGreaterThan(0);
+        expect(result.addresses?.length).toBeGreaterThan(0);
       });
     }, 30000);
   });

@@ -56,7 +56,7 @@ describe('Settings Management Logic', () => {
         { ip: '192.168.1.2', enabled: true }
       ];
 
-      mockFs.writeFile.mockResolvedValue();
+      mockFs.writeFile.mockResolvedValue(undefined);
 
       const saveLocalDNSServers = async (serversToSave: any[]) => {
         const data = JSON.stringify(serversToSave, null, 2);
@@ -191,7 +191,7 @@ describe('Settings Management Logic', () => {
             errors.push('Invalid IP address format');
           } else {
             const parts = server.ip.split('.');
-            const invalidPart = parts.find(part => {
+            const invalidPart = parts.find((part: string) => {
               const num = parseInt(part, 10);
               return num < 0 || num > 255;
             });
@@ -284,7 +284,7 @@ describe('Settings Management Logic', () => {
           const data = await fs.readFile(filename, 'utf-8');
           return JSON.parse(data);
         } catch (error) {
-          console.warn(`Failed to parse ${filename}:`, error.message);
+          console.warn(`Failed to parse ${filename}:`, (error as Error).message);
           return null;
         }
       };
@@ -298,8 +298,8 @@ describe('Settings Management Logic', () => {
       const configDir = '/app/config';
       const configFile = path.join(configDir, 'settings.json');
 
-      mockFs.mkdir.mockResolvedValue();
-      mockFs.writeFile.mockResolvedValue();
+      mockFs.mkdir.mockResolvedValue(undefined);
+      mockFs.writeFile.mockResolvedValue(undefined);
 
       const ensureConfigDir = async (filePath: string) => {
         const dir = path.dirname(filePath);
@@ -330,7 +330,7 @@ describe('Settings Management Logic', () => {
       const backupFile = 'important-config.json.backup';
 
       mockFs.readFile.mockResolvedValue('{"existing": "data"}');
-      mockFs.writeFile.mockResolvedValue();
+      mockFs.writeFile.mockResolvedValue(undefined);
       mockFs.copyFile.mockResolvedValue();
 
       const saveConfigWithBackup = async (filename: string, newData: any) => {

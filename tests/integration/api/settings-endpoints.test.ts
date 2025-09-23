@@ -3,6 +3,9 @@ import request from 'supertest';
 describe('Settings Endpoints Integration', () => {
   const API_BASE_URL = process.env.TEST_API_URL || 'http://localhost:3001';
 
+  // Note: These tests validate API contracts and should use mock data in CI
+  // They may connect to a running server in development for integration testing
+
   describe('Local DNS Settings', () => {
     describe('GET /api/settings/local-dns', () => {
       it('should return local DNS configuration', async () => {
