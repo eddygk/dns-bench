@@ -35,8 +35,8 @@ Live progress tracking with Socket.IO showing current domain being tested, progr
 
 ![Benchmark In Progress](.github/assets/benchmark-in-progress.png)
 
-### Detailed Performance Analysis
-Comprehensive results with winner identification, response time charts, detailed server rankings, and smart recommendations. Includes tabbed interface for failures, server analysis, and raw diagnostics.
+### Detailed Server Analysis
+Comprehensive server-by-server breakdown showing failure analysis, per-server domain testing results, and collapsible detailed views. Features tabbed interface with server failure breakdown and expandable per-server analysis.
 
 ![Results Analysis](.github/assets/results-analysis.png)
 
