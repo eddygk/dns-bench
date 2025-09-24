@@ -18,6 +18,33 @@ A modern web-based DNS benchmarking application that tests and compares DNS serv
 - **🔒 Security First** - Rate limiting, CORS configuration, input validation
 - **🧪 Comprehensive Testing** - 21 unit tests with stable CI pipeline for reliable development
 
+## 📸 Screenshots
+
+### Dashboard Overview
+Clean, intuitive dashboard showing your DNS configuration status with quick actions for benchmarking and settings. Get instant visibility into your current DNS setup and recent test history.
+
+![Dashboard Overview](.github/assets/dashboard-overview.png)
+
+### Comprehensive Settings Management
+Powerful configuration interface for local DNS servers, public DNS providers, test parameters, and network access controls. Easily manage up to 20 public DNS servers and customize test behavior.
+
+![Settings Configuration](.github/assets/settings-configuration.png)
+
+### Real-Time Benchmark Testing
+Live progress tracking with Socket.IO showing current domain being tested, progress percentage, and real-time results table. Watch DNS performance unfold with sub-100ms update latency.
+
+![Benchmark In Progress](.github/assets/benchmark-in-progress.png)
+
+### Detailed Performance Analysis
+Comprehensive results with winner identification, response time charts, detailed server rankings, and smart recommendations. Includes tabbed interface for failures, server analysis, and raw diagnostics.
+
+![Results Analysis](.github/assets/results-analysis.png)
+
+### Historical Performance Tracking
+Browse and compare past benchmark results with summary statistics. Track performance trends over time with total tests completed, best response times, and success rate achievements.
+
+![History Tracking](.github/assets/history-tracking.png)
+
 ## 🚀 Quick Start
 
 > **New to DNS Bench?** Choose your setup method below. **Production Deployment** is recommended for regular use, **Development** is for code contributions.
