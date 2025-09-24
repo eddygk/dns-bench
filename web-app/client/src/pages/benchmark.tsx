@@ -171,23 +171,26 @@ export function BenchmarkPage() {
       const dnsResponse = await apiRequest('/api/dns/current')
       const { servers: currentServers } = await dnsResponse.json()
 
+      // Get enabled public DNS servers from settings
+      const publicDnsResponse = await apiRequest('/api/settings/public-dns')
+      const { config: publicDnsConfig } = await publicDnsResponse.json()
+      const enabledPublicDns = publicDnsConfig.servers
+        .filter((server: any) => server.enabled)
+        .map((server: any) => server.ip)
+
       // Determine servers based on test type
       let serversToTest: string[] = []
       if (testType === 'quick') {
+        // For quick test, use local DNS + first 3 enabled public DNS
         serversToTest = [
           ...currentServers, // Include ALL local DNS servers
-          '1.1.1.1', // Cloudflare
-          '8.8.8.8', // Google
-          '9.9.9.9'  // Quad9
+          ...enabledPublicDns.slice(0, 3) // First 3 enabled public DNS
         ]
       } else if (testType === 'full') {
+        // For full test, use local DNS + all enabled public DNS
         serversToTest = [
-          ...currentServers,
-          '1.1.1.1', '1.0.0.1',
-          '8.8.8.8', '8.8.4.4',
-          '9.9.9.9', '149.112.112.112',
-          '208.67.222.222', '208.67.220.220',
-          '4.2.2.1', '4.2.2.2'
+          ...currentServers, // Include ALL local DNS servers
+          ...enabledPublicDns // ALL enabled public DNS servers
         ]
       }
 

@@ -598,6 +598,18 @@ export class SettingsService {
     return map
   }
 
+  async restorePublicDNSDefaults(): Promise<PublicDNSConfig> {
+    try {
+      this.logger.info('Restoring public DNS configuration to defaults')
+      const defaultConfig = { ...this.defaultPublicDNS }
+      await this.savePublicDNSConfig(defaultConfig)
+      return defaultConfig
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to restore public DNS defaults')
+      throw error
+    }
+  }
+
   // Test Configuration Management
   async loadTestConfig(): Promise<TestConfiguration> {
     try {

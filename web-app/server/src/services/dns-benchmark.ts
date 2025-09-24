@@ -366,13 +366,12 @@ export class DNSBenchmarkService {
       let publicServers: string[] = []
 
       if (this.settingsService) {
-        try {
-          publicServers = await this.settingsService.getEnabledPublicDNSServers()
-        } catch (error) {
-          this.logger.debug({ error }, 'Failed to get configured public DNS servers, falling back to defaults')
-          publicServers = Object.values(this.publicDNS)
-        }
+        // Always use only the enabled servers from user configuration
+        publicServers = await this.settingsService.getEnabledPublicDNSServers()
+        this.logger.info({ count: publicServers.length, servers: publicServers }, 'Using enabled public DNS servers from settings')
       } else {
+        // Only use fallback if no settings service is available
+        this.logger.warn('No settings service available, using all default public DNS servers')
         publicServers = Object.values(this.publicDNS)
       }
 

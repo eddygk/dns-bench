@@ -9,8 +9,19 @@ import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { apiRequest } from '@/lib/api'
-import { Settings, Bell, Palette, Database, Globe, Plus, X, Trash2, Server } from 'lucide-react'
+import { Settings, Bell, Palette, Database, Globe, Plus, X, Trash2, Server, RotateCcw } from 'lucide-react'
 
 interface CORSSettings {
   allowIPAccess: boolean
@@ -102,6 +113,7 @@ export function SettingsPage() {
   const [isSavingPublicDNS, setIsSavingPublicDNS] = useState(false)
   const [isSavingTestConfig, setIsSavingTestConfig] = useState(false)
   const [isSavingDomainList, setIsSavingDomainList] = useState(false)
+  const [isRestoringPublicDNS, setIsRestoringPublicDNS] = useState(false)
   const [newOrigin, setNewOrigin] = useState('')
 
   // Load settings using React Query for automatic refetching
@@ -431,6 +443,26 @@ export function SettingsPage() {
     }))
   }
 
+  const restorePublicDNSDefaults = async () => {
+    setIsRestoringPublicDNS(true)
+    try {
+      const response = await apiRequest('/api/settings/public-dns/reset', {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        // Invalidate and refetch the query instead of manually updating state
+        queryClient.invalidateQueries({ queryKey: ['public-dns-config'] })
+      } else {
+        throw new Error('Failed to restore public DNS defaults')
+      }
+    } catch (error) {
+      console.error('Failed to restore public DNS defaults:', error)
+    } finally {
+      setIsRestoringPublicDNS(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -746,18 +778,50 @@ export function SettingsPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                onClick={addPublicDNSServer}
-                disabled={publicDNSConfig.servers.length >= 20}
-                className="flex items-center space-x-2"
-              >
-              <Plus className="h-4 w-4" />
-              <span>Add Custom DNS Server</span>
-            </Button>
-            <Badge variant="secondary">
-              {publicDNSConfig.servers.filter(s => s.enabled).length}/{publicDNSConfig.servers.length} enabled
-            </Badge>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={addPublicDNSServer}
+                  disabled={publicDNSConfig.servers.length >= 20}
+                  className="flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Custom DNS Server</span>
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      disabled={isRestoringPublicDNS}
+                      className="flex items-center space-x-2"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      <span>Restore Defaults</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Restore DNS Server Defaults?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action will restore the public DNS servers to the default configuration:
+                        <br />• Cloudflare, Google, and Quad9 (enabled)
+                        <br />• OpenDNS and Level3 (disabled)
+                        <br /><br />
+                        Any custom DNS servers you've added will be removed, and any changes to the default servers will be lost.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={restorePublicDNSDefaults}>
+                        {isRestoringPublicDNS ? 'Restoring...' : 'Restore Defaults'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+              <Badge variant="secondary">
+                {publicDNSConfig.servers.filter(s => s.enabled).length}/{publicDNSConfig.servers.length} enabled
+              </Badge>
             </div>
             </>
           )}

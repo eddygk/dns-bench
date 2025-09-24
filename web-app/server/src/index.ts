@@ -467,6 +467,16 @@ app.put('/api/settings/public-dns', async (req, res) => {
   }
 })
 
+app.post('/api/settings/public-dns/reset', async (req, res) => {
+  try {
+    const restoredConfig = await settingsService.restorePublicDNSDefaults()
+    res.json({ config: restoredConfig })
+  } catch (error) {
+    logger.error({ error }, 'Failed to restore public DNS defaults')
+    res.status(500).json({ error: 'Failed to restore public DNS defaults' })
+  }
+})
+
 // Test configuration endpoints
 app.get('/api/settings/test-config', async (req, res) => {
   try {

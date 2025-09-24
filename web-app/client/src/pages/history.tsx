@@ -60,7 +60,6 @@ export function HistoryPage() {
       setError(null)
       const response = await apiRequest('/api/results?limit=20&offset=0')
       if (!response.ok) {
-        const errorText = await response.text()
         throw new Error(`Failed to fetch history: ${response.status} ${response.statusText}`)
       }
       const data = await response.json()
