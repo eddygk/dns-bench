@@ -2,7 +2,7 @@
 
 A modern web-based DNS benchmarking application that tests and compares DNS server performance. Features a React frontend with real-time updates and comprehensive performance analytics.
 
-![DNS Bench Web](https://img.shields.io/badge/Platform-Linux-blue) ![React](https://img.shields.io/badge/React-18-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue) ![Docker](https://img.shields.io/badge/Docker-Ready-green)
+![DNS Bench Web](https://img.shields.io/badge/Platform-Linux-blue) ![React](https://img.shields.io/badge/React-18-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue) ![Docker](https://img.shields.io/badge/Docker-Ready-green) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/eddygk/dns-bench)
 
 ## 🎯 Features
 
